@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# semantic-release needs to push the version/changelog commit + tag and create
+# the GitHub Release.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+# Never run two releases at once.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history + tags so semantic-release can determine the version.
+          fetch-depth: 0
+          # Let semantic-release authenticate with GITHUB_TOKEN itself.
+          persist-credentials: false
+
+      # Uses the pnpm version pinned in package.json "packageManager".
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Don't cut a release on broken code.
+      - name: Verify
+        run: |
+          pnpm test
+          pnpm exec vite build
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm exec semantic-release
