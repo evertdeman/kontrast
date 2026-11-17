@@ -186,9 +186,8 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
               aria-hidden="true"
               className="hidden w-[240px] flex-none flex-col gap-2 border-r border-line p-3 md:flex"
             >
-              <div className="flex justify-between text-xs text-faint">
+              <div className="flex text-xs text-faint">
                 <span>Series</span>
-                <span className="font-mono">0</span>
               </div>
               {[0, 1, 2, 3].map((i) => (
                 <div
