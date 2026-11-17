@@ -28,7 +28,7 @@ export function SiteFooter({ newTab, className }: SiteFooterProps) {
               {link.label}
             </a>
           ))}
-          <span className="font-mono">v0.1</span>
+          <span className="font-mono">v{__APP_VERSION__}</span>
         </nav>
       </div>
     </footer>
