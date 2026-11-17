@@ -1,0 +1,8 @@
+# Keep `pnpm run dev` fast & offline in this sandboxed env:
+# don't re-install before each script, and don't error on the optional
+# core-js-pure build script (a polyfill postinstall we don't need).
+verifyDepsBeforeRun: false
+ignoredBuiltDependencies:
+  - core-js-pure
+allowBuilds:
+  core-js-pure: false
