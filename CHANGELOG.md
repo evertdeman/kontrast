@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/evertdeman/kontrast/compare/v1.0.0...v1.0.1) (2026-11-17)
+
+### Bug Fixes
+
+* show the real app version in the footer ([bb2272f](https://github.com/evertdeman/kontrast/commit/bb2272f9cf5ad235f034b5cbfa9f9a91b3b9c34f))
+
 # 1.0.0 (2026-11-17)
 
 ### Bug Fixes
