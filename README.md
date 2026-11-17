@@ -124,6 +124,16 @@ scripts/              sample study generator
 public/sample/        bundled synthetic sample study
 ```
 
+## Releases
+
+Versioning follows [Semantic Versioning](https://semver.org/) and is automated with [semantic-release](https://semantic-release.org/). On every push to `main`, the release workflow derives the next version from the [Conventional Commits](https://www.conventionalcommits.org/) made since the last release, updates `CHANGELOG.md` and `package.json`, tags the commit and publishes a GitHub Release. Commit messages therefore drive the version:
+
+- `fix: …` → patch release (`0.0.x`)
+- `feat: …` → minor release (`0.x.0`)
+- `feat!: …`, or any commit with a `BREAKING CHANGE:` footer → major release (`x.0.0`)
+
+Other types (`chore:`, `docs:`, `ci:`, `refactor:`, `test:`, …) are recorded but do not trigger a release on their own.
+
 ## Status
 
 Kontrast is in early development. Expect rough edges.
