@@ -1,122 +1,47 @@
-import { useCallback, useState } from 'react'
-import { toast } from 'sonner'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Landing } from '@/components/Landing'
-import { Studies } from '@/components/Studies'
-import { Viewer } from '@/components/Viewer'
-import {
-  registerFiles,
-  clearImageTags,
-  describeSkipped,
-  type IndexingProgress,
-  type RegisteredInstance,
-} from '@/lib/cornerstone/loadDicom'
-import { groupIntoStudies, type StudyInfo } from '@/lib/cornerstone/studies'
-import { expandArchives, loadSampleFiles } from '@/lib/files'
+import type { WorkspaceEntry } from '@/components/Workspace'
 
-type View = 'landing' | 'studies' | 'viewer'
+// The viewer pulls in Cornerstone, dcmjs and the DICOM codecs — by far the
+// heaviest part of the bundle. Keep it out of the initial download so the
+// landing screen paints immediately; it's fetched the moment the user opens
+// files or the sample study.
+const importWorkspace = () => import('@/components/Workspace')
+const Workspace = lazy(importWorkspace)
 
 export default function App() {
-  const [view, setView] = useState<View>('landing')
-  const [registered, setRegistered] = useState<RegisteredInstance[]>([])
-  const [studies, setStudies] = useState<StudyInfo[]>([])
-  const [active, setActive] = useState<{ studyUID: string; seriesUID: string } | null>(
-    null,
-  )
-  const [indexing, setIndexing] = useState<IndexingProgress | null>(null)
+  const [entry, setEntry] = useState<WorkspaceEntry | null>(null)
 
-  const handleFiles = useCallback(
-    async (files: File[], append = false) => {
-      if (files.length === 0) return
-      setView('studies')
-      setIndexing({ done: 0, total: files.length, unpacking: true })
-      try {
-        const { files: expanded, failedArchives } = await expandArchives(files)
-        setIndexing({ done: 0, total: expanded.length })
-        const { instances, skipped } = await registerFiles(expanded, (done, total) =>
-          setIndexing({ done, total }),
-        )
-        skipped.badArchive += failedArchives
-        const skippedNote = describeSkipped(skipped) ?? undefined
-        if (instances.length === 0) {
-          toast.error('No DICOM images found in that selection.', {
-            description: skippedNote,
-          })
-          if (!append && registered.length === 0) setView('landing')
-          return
-        }
-        const all = append ? [...registered, ...instances] : instances
-        setRegistered(all)
-        setStudies(groupIntoStudies(all))
-        const images = instances.reduce((n, inst) => n + inst.imageIds.length, 0)
-        toast.success(`Indexed ${images} image${images === 1 ? '' : 's'}.`, {
-          description: skippedNote,
-          duration: skippedNote ? 8000 : undefined,
-        })
-      } catch (err) {
-        console.error(err)
-        toast.error('Could not read those files as DICOM.')
-        if (!append && registered.length === 0) setView('landing')
-      } finally {
-        setIndexing(null)
-      }
-    },
-    [registered],
-  )
-
-  const openSample = useCallback(async () => {
-    try {
-      await handleFiles(await loadSampleFiles())
-    } catch (err) {
-      console.error(err)
-      toast.error('Could not load the sample study.')
+  // Warm the viewer chunk in the background once the landing screen is idle, so
+  // opening a study feels instant without weighing down first paint. Safe to
+  // call repeatedly — the module cache dedupes it with React.lazy's import.
+  useEffect(() => {
+    if (entry) return
+    const prefetch = () => void importWorkspace()
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(prefetch)
+      return () => window.cancelIdleCallback?.(id)
     }
-  }, [handleFiles])
+    const timer = window.setTimeout(prefetch, 1500)
+    return () => window.clearTimeout(timer)
+  }, [entry])
 
-  const openSeries = useCallback((studyUID: string, seriesUID: string) => {
-    setActive({ studyUID, seriesUID })
-    setView('viewer')
-  }, [])
-
-  const clearSession = useCallback(() => {
-    clearImageTags()
-    setRegistered([])
-    setStudies([])
-    setActive(null)
-    setIndexing(null)
-    setView('landing')
-  }, [])
-
-  const activeStudy = active
-    ? studies.find((s) => s.studyUID === active.studyUID)
-    : undefined
-
-  if (view === 'viewer' && active && activeStudy) {
+  if (entry) {
     return (
-      <Viewer
-        study={activeStudy}
-        initialSeriesUID={active.seriesUID}
-        onBack={() => setView('studies')}
-      />
-    )
-  }
-
-  if (view === 'studies') {
-    return (
-      <Studies
-        studies={studies}
-        indexing={indexing}
-        onOpenSeries={openSeries}
-        onAddFiles={(files) => handleFiles(files, true)}
-        onClearSession={clearSession}
-      />
+      // While the Workspace chunk downloads, keep the landing screen on-screen
+      // in its loading state so the layout stays put.
+      <Suspense fallback={<Landing onFiles={() => {}} onSample={() => {}} loading />}>
+        <Workspace entry={entry} onExit={() => setEntry(null)} />
+      </Suspense>
     )
   }
 
   return (
     <Landing
-      onFiles={(files) => handleFiles(files)}
-      onSample={openSample}
-      loading={!!indexing}
+      onFiles={(files) => {
+        if (files.length > 0) setEntry({ kind: 'files', files })
+      }}
+      onSample={() => setEntry({ kind: 'sample' })}
     />
   )
 }

@@ -42,7 +42,7 @@ function GithubIcon({ className }: { className?: string }) {
 
 interface LandingProps {
   onFiles: (files: File[]) => void
-  onSample: () => Promise<void>
+  onSample: () => void | Promise<void>
   loading?: boolean
 }
 

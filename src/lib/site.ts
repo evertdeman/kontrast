@@ -1,8 +1,7 @@
-// TODO: point these at the public repository once it has its final name.
 export const SITE = {
   name: 'Kontrast',
-  sourceUrl: 'https://github.com/your-name/kontrast',
-  licenseUrl: 'https://github.com/your-name/kontrast/blob/main/LICENSE',
+  sourceUrl: 'https://github.com/evertdeman/kontrast',
+  licenseUrl: 'https://github.com/evertdeman/kontrast/blob/main/LICENSE',
 } as const
 
 export const FOOTER_LINKS = [
