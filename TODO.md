@@ -1,6 +1,46 @@
 # TODO
 
-Internal notes on known gaps and planned improvements. Not user-facing.
+Internal notes on scope, known gaps and planned improvements. Not user-facing.
+
+## Scope & vision
+
+Kontrast is not only an image viewer — it's a client-side DICOM workbench:
+
+1. **Image viewer** (today) — render image series, windowing, measurement, etc.
+2. **Header / metadata reader** (today, to deepen) — inspect the full DICOM
+   header of any object, including private tags and nested sequences.
+3. **Non-image object support** (future) — read and present the "funky" objects
+   that are currently skipped, not just image IODs.
+
+The guiding principle: **never silently drop a DICOM object.** If we can't fully
+render it, we should still list it and let the user read its header.
+
+## Non-image DICOM object support
+
+Today [`parseTags`](src/lib/dicom/parse.ts) skips any file with no PixelData
+(`noImage`) or an unsupported transfer syntax (`unsupported`). The goal is to
+support these first-class instead:
+
+- [ ] **Stop silently skipping non-image objects.** List them in the studies /
+      series panel (by modality / SOP class) so they're visible and at minimum
+      their header can be opened.
+- [ ] **Full header reader for every object.** Make the complete tag tree
+      browsable for *any* DICOM file — even ones we can't render — with VR,
+      sequences / nested items, and private tags.
+- [ ] **Structured Reports (SR).** Render the SR content tree: narrative text,
+      coded content, measurements, and links to referenced images.
+- [ ] **Encapsulated PDF.** Display the embedded PDF.
+- [ ] **Presentation States (GSPS).** Apply to the referenced images (window,
+      zoom/pan, annotations, shutters, flips).
+- [ ] **Segmentation (SEG).** Overlay masks on the referenced series rather than
+      showing raw mask frames.
+- [ ] **RT Structure Set.** Render ROI contours over the referenced images.
+- [ ] **Waveforms (e.g. ECG).** Plot waveform data.
+- [ ] **DICOM video.** Play encapsulated MPEG / H.26x video (transfer syntaxes
+      `…1.2.4.100`–`103` and friends), currently skipped as `unsupported`.
+
+Note: SEG, RTDOSE and RTIMAGE carry pixel data, so they already load as raw
+image frames today — but without their semantics (no overlay / dose mapping).
 
 ## Memory handling
 
