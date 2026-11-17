@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
@@ -16,11 +17,22 @@ const viteCommonjs = ((viteCommonjsNs as { default?: unknown }).default ??
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Read the version from package.json so the UI can show it. In CI the deploy
+// runs after semantic-release has bumped this field, so the built site always
+// reflects the version that was just released.
+const pkg = JSON.parse(
+  readFileSync(path.join(__dirname, 'package.json'), 'utf8'),
+) as { version: string }
+
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   // Served from https://evertdeman.github.io/kontrast/ on GitHub Pages, so the
   // production bundle must reference assets under /kontrast/. Dev stays at root.
   base: command === 'build' ? '/kontrast/' : '/',
+  // Compile-time constant; see src/types/globals.d.ts for the type.
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     tailwindcss(),
