@@ -36,6 +36,11 @@ dist-ssr
 # local agent/editor tooling
 .claude/
 
+# Playwright output
+test-results/
+playwright-report/
+blob-report/
+
 # Local DICOM test files (pydicom test suite)
 test-data/
 

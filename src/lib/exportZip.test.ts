@@ -2,7 +2,17 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { unzipSync } from 'fflate'
 import dicomParser from 'dicom-parser'
 import { buildDicom } from '@/test/buildDicom'
-import { writeAnonymizedZip, type ZipSink } from './anonymizedZip'
+import { resolveTag } from '@/lib/dicom/editTags'
+import {
+  anonymizeFiles,
+  copyKindOf,
+  editFiles,
+  namedEntries,
+  writeAnonymizedZip,
+  writeEditedZip,
+  writeFilesZip,
+  type ZipSink,
+} from './exportZip'
 
 function dicomFile(name: string, sopInstanceUid: string): File {
   const bytes = buildDicom({
@@ -37,6 +47,64 @@ function memorySink() {
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
+})
+
+describe('namedEntries', () => {
+  test('keeps file names, in one numbered folder per series, and avoids clashes', () => {
+    const f = (name: string) => new File([], name)
+    const entries = namedEntries([
+      { seriesUID: 'a', description: 'Axial T1/post', files: [f('IM0001.dcm'), f('IM0001.dcm'), f('IM0002')] },
+      { seriesUID: 'b', description: '', files: [f('IM0001')] },
+    ])
+    expect(entries.map((e) => [e.path, e.seriesUID])).toEqual([
+      ['01 Axial T1_post/IM0001.dcm', 'a'],
+      ['01 Axial T1_post/IM0001-2.dcm', 'a'],
+      ['01 Axial T1_post/IM0002', 'a'],
+      ['02 Series/IM0001', 'b'],
+    ])
+  })
+})
+
+describe('writeEditedZip', () => {
+  test('writes the edited files under their own names', async () => {
+    const { sink, entries } = memorySink()
+    const tag = resolveTag('PatientName')!
+    const result = await writeEditedZip(
+      [{ seriesUID: 's', description: 'Axial', files: [dicomFile('IM0001.dcm', '1.2.826.0.1.10')] }],
+      [{ tag, action: 'set', value: 'Test^Patient', seriesUID: null }],
+      { newUids: false },
+      sink,
+    )
+    expect(result).toEqual({ written: 1, failed: 0 })
+    const ds = dicomParser.parseDicom(entries()['01 Axial/IM0001.dcm'])
+    expect(ds.string('x00100010')).toBe('Test^Patient')
+    expect(ds.string('x00080018')).toBe('1.2.826.0.1.10')
+  })
+})
+
+describe('copies opened in Kontrast', () => {
+  test('anonymised and edited copies are remembered as such; originals are not', async () => {
+    const original = dicomFile('IM0001.dcm', '1.2.826.0.1.10')
+    const anonymised = await anonymizeFiles([[original]])
+    const edited = await editFiles(
+      [{ seriesUID: 's', description: 'Axial', files: [original] }],
+      [{ tag: resolveTag('PatientName')!, action: 'set', value: 'X', seriesUID: null }],
+      { newUids: true },
+    )
+    expect(anonymised.files).toHaveLength(1)
+    expect(dicomParser.parseDicom(new Uint8Array(await anonymised.files[0].arrayBuffer())).string('x00100010')).toMatch(/^ANON-/)
+    expect(copyKindOf(anonymised.files[0])).toBe('anonymised')
+    expect(copyKindOf(edited.files[0])).toBe('edited')
+    expect(edited.files[0].name).toBe('IM0001.dcm')
+    expect(copyKindOf(original)).toBeUndefined()
+  })
+
+  test('can be saved as a zip again, unchanged', async () => {
+    const { sink, entries } = memorySink()
+    const file = dicomFile('0001.dcm', '1.2.826.0.1.10')
+    await writeFilesZip([{ seriesUID: 's', description: 'Axial', files: [file] }], sink)
+    expect(entries()['01 Axial/0001.dcm']).toEqual(new Uint8Array(await file.arrayBuffer()))
+  })
 })
 
 describe('writeAnonymizedZip', () => {

@@ -23,6 +23,9 @@ export interface StudyInfo {
   bytes: number
 }
 
+/** Shown when a study has no Study Description of its own. */
+export const NO_STUDY_DESCRIPTION = 'No study description'
+
 function formatDate(raw?: string): string {
   if (!raw || raw.length < 8) return raw || '—'
   return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
@@ -41,8 +44,7 @@ export function groupIntoStudies(instances: RegisteredInstance[]): StudyInfo[] {
     if (!studies.has(studyKey)) {
       studies.set(studyKey, {
         studyUID: studyKey,
-        description:
-          tags.studyDescription || tags.seriesDescription || 'Untitled study',
+        description: tags.studyDescription || NO_STUDY_DESCRIPTION,
         patient: tags.patientName || 'Anonymous',
         date: formatDate(tags.studyDate),
         modality: tags.modality || '—',

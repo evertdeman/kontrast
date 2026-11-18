@@ -108,13 +108,13 @@ describe('groupIntoStudies', () => {
     const [study] = groupIntoStudies([
       instance('a', { studyDescription: '', seriesDescription: '', patientName: '', modality: '', studyDate: '' }),
     ])
-    expect(study).toMatchObject({ description: 'Untitled study', patient: 'Anonymous', modality: '—', date: '—' })
+    expect(study).toMatchObject({ description: 'No study description', patient: 'Anonymous', modality: '—', date: '—' })
     expect(study.series[0]).toMatchObject({ description: 'Series', modality: '—' })
   })
 
-  test('uses the series description when the study has none', () => {
+  test('says so when the study has no description, rather than borrowing a series one', () => {
     const [study] = groupIntoStudies([instance('a', { studyDescription: '' })])
-    expect(study.description).toBe('Axial')
+    expect(study.description).toBe('No study description')
   })
 })
 

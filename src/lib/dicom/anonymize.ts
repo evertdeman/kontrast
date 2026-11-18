@@ -89,6 +89,30 @@ export function randomUid(): string {
   return `2.25.${BigInt(`0x${randomHex(16)}`)}`
 }
 
+/**
+ * Replaces instance UIDs with fresh ones, the same replacement for the same
+ * UID every time. Standard UIDs (SOP classes, transfer syntaxes) and empty
+ * values are returned unchanged.
+ */
+export function createUidMapper(): (uid: unknown) => string {
+  const uids = new Map<string, string>()
+  return (value) => {
+    const uid = String(value).replace(/[\0\s]+$/, '').trim()
+    if (!uid || uid.startsWith(WELL_KNOWN_UID_PREFIX)) return uid
+    let mapped = uids.get(uid)
+    if (!mapped) {
+      mapped = randomUid()
+      uids.set(uid, mapped)
+    }
+    return mapped
+  }
+}
+
+/** Whether a UI element holds an instance UID rather than naming a standard. */
+export function isInstanceUidTag(tag: string): boolean {
+  return !KEEP_UID_TAGS.has(tag)
+}
+
 function randomHex(bytes: number): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) =>
     b.toString(16).padStart(2, '0'),
@@ -162,19 +186,9 @@ export function createAnonymizer(options: Partial<AnonymizeOptions> = {}): Anony
     ...(opts.keepSizeAndWeight ? [PATIENT_SIZE, PATIENT_WEIGHT] : []),
   ])
 
-  const uids = new Map<string, string>()
+  const mapUid = createUidMapper()
   const patientIds = new Map<string, string>()
 
-  const mapUid = (value: unknown) => {
-    const uid = String(value).replace(/[\0\s]+$/, '').trim()
-    if (!uid || uid.startsWith(WELL_KNOWN_UID_PREFIX)) return uid
-    let mapped = uids.get(uid)
-    if (!mapped) {
-      mapped = randomUid()
-      uids.set(uid, mapped)
-    }
-    return mapped
-  }
 
   const pseudonymFor = (dataset: DicomDataset) => {
     const original = String(dataset[PATIENT_ID]?.Value?.[0] ?? '').trim()
