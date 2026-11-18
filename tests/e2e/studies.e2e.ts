@@ -16,7 +16,7 @@ test.describe('with the sample open', () => {
   test.beforeEach(async ({ page }) => openSample(page))
 
   test('shows a thumbnail for each series', async ({ page }) => {
-    await studyRow(page, 'Sample').getByRole('button', { name: 'CT', exact: true }).click()
+    await studyRow(page, 'Sample').getByRole('button', { name: 'MR', exact: true }).click()
     const thumbnails = page.locator('main canvas')
     await expect(thumbnails).toHaveCount(2)
     for (const canvas of await thumbnails.all()) {

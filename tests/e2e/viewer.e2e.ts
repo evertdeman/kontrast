@@ -88,6 +88,9 @@ test('the elliptical region shows Hounsfield statistics', async ({ page }) => {
 })
 
 test('every toolbar button shows a tooltip with its shortcut', async ({ page }) => {
+  // Use a CT study so the full toolbar (including the CT window presets) is present.
+  await openCtHead(page)
+
   const toolbar = page.getByRole('toolbar', { name: 'Tools' })
   const buttons = await toolbar.getByRole('button').all()
   expect(buttons.length).toBeGreaterThanOrEqual(12)
