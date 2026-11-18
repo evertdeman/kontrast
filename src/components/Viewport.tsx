@@ -15,7 +15,7 @@ const VIEWPORT_ID = 'dicom-stack-viewport'
 interface ViewportProps {
   imageIds: string[]
   onViewportReady?: (viewport: Types.IStackViewport) => void
-  onIndexChange?: (index: number, total: number) => void
+  onIndexChange?: (index: number) => void
   onLoadError?: (imageId: string) => void
 }
 
@@ -112,12 +112,12 @@ export function Viewport({
         newImageIdIndex?: number
       }
       const idx = detail?.newImageIdIndex ?? detail?.imageIdIndex
-      if (typeof idx === 'number') onIndexChange?.(idx, imageIds.length)
+      if (typeof idx === 'number') onIndexChange?.(idx)
     }
     element.addEventListener(Enums.Events.STACK_NEW_IMAGE, handler)
     return () =>
       element.removeEventListener(Enums.Events.STACK_NEW_IMAGE, handler)
-  }, [imageIds.length, onIndexChange])
+  }, [onIndexChange])
 
   // Report images that fail to load or decode.
   useEffect(() => {
@@ -141,11 +141,14 @@ export function Viewport({
       try {
         await viewport.setStack(imageIds, 0)
       } catch (err) {
+        if (cancelled) return
         console.error(err)
         onLoadError?.(imageIds[0])
       }
+      // A newer stack was requested while this one loaded; let that one win.
+      if (cancelled) return
       viewport.render()
-      onIndexChange?.(0, imageIds.length)
+      onIndexChange?.(0)
     }
     void loadStack()
     return () => {

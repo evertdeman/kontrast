@@ -17,7 +17,7 @@ interface ViewportStageProps {
   onTogglePlay: () => void
   onScrub: (index: number) => void
   onViewportReady: (vp: Types.IStackViewport) => void
-  onIndexChange: (index: number, total: number) => void
+  onIndexChange: (index: number) => void
   onLoadError: (imageId: string) => void
 }
 
