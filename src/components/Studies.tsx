@@ -7,9 +7,13 @@ import {
   Loader2,
   Layers,
   FolderOpen,
+  VenetianMask,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { AnonymizeDialog } from '@/components/AnonymizeDialog'
+import { ProgressBar } from '@/components/ProgressBar'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { SITE } from '@/lib/site'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -32,7 +36,7 @@ interface StudiesProps {
 const toFiles = (list: FileList | null): File[] => (list ? Array.from(list) : [])
 
 const COLS =
-  'grid-cols-[72px_minmax(0,2.2fr)_minmax(0,1fr)_110px_72px_84px_84px_96px]'
+  'grid-cols-[72px_minmax(0,2.2fr)_minmax(0,1fr)_110px_72px_84px_84px_128px]'
 
 export function Studies({
   studies,
@@ -42,6 +46,7 @@ export function Studies({
   onClearSession,
 }: StudiesProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [anonymizing, setAnonymizing] = useState<StudyInfo | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
 
@@ -119,18 +124,7 @@ export function Studies({
                 </span>
               )}
             </div>
-            <div
-              role="progressbar"
-              aria-valuenow={pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              className="h-1.5 overflow-hidden rounded-full bg-line-strong"
-            >
-              <div
-                className="h-full rounded-full bg-primary transition-[width]"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            <ProgressBar value={pct} />
           </div>
         )}
 
@@ -165,6 +159,7 @@ export function Studies({
                     onOpenSeries(study.studyUID, study.series[0].seriesUID)
                   }
                   onOpenSeries={(seriesUID) => onOpenSeries(study.studyUID, seriesUID)}
+                  onAnonymize={() => setAnonymizing(study)}
                 />
               ))}
             </div>
@@ -179,6 +174,8 @@ export function Studies({
       </main>
 
       <SiteFooter newTab />
+
+      <AnonymizeDialog study={anonymizing} onClose={() => setAnonymizing(null)} />
 
       {/* Hidden inputs — fully local, no upload */}
       <input
@@ -214,12 +211,14 @@ function StudyRow({
   onToggle,
   onOpenStudy,
   onOpenSeries,
+  onAnonymize,
 }: {
   study: StudyInfo
   expanded: boolean
   onToggle: () => void
   onOpenStudy: () => void
   onOpenSeries: (seriesUID: string) => void
+  onAnonymize: () => void
 }) {
   return (
     <div className="border-b border-line last:border-b-0">
@@ -246,14 +245,29 @@ function StudyRow({
         <span className="font-mono text-[13px] text-muted-foreground">
           {formatBytes(study.bytes)}
         </span>
-        <button
-          type="button"
-          onClick={onOpenStudy}
-          className="flex h-8 items-center gap-1.5 justify-self-end rounded-md border border-line-strong bg-secondary px-3 text-[13px] font-medium transition-colors hover:brightness-110"
-        >
-          Open
-          <ArrowRight className="size-3.5" />
-        </button>
+        <div className="flex items-center gap-2 justify-self-end">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onAnonymize}
+                aria-label="Anonymise and save as zip"
+                className="flex size-8 items-center justify-center rounded-md border border-line-strong text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <VenetianMask className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Anonymise and save as zip</TooltipContent>
+          </Tooltip>
+          <button
+            type="button"
+            onClick={onOpenStudy}
+            className="flex h-8 items-center gap-1.5 rounded-md border border-line-strong bg-secondary px-3 text-[13px] font-medium transition-colors hover:brightness-110"
+          >
+            Open
+            <ArrowRight className="size-3.5" />
+          </button>
+        </div>
       </div>
 
       {expanded && (

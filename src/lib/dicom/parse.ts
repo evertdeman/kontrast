@@ -11,6 +11,7 @@ export interface DicomTags {
   studyUID: string
   seriesUID: string
   sopUID: string
+  sopClassUID: string
   modality: string
   studyDescription: string
   seriesDescription: string
@@ -30,6 +31,8 @@ export interface DicomTags {
   /** PatientOrientation (row and column direction), for projection images. */
   patientOrientation: [string, string] | null
   accession: string
+  /** BurnedInAnnotation: "YES", "NO" or empty when absent. */
+  burnedInAnnotation: string
   /** Curated header values keyed by DICOM keyword, for the inspector. */
   summary: Record<string, string>
 }
@@ -137,6 +140,7 @@ export function parseTags(bytes: Uint8Array): DicomTags {
     studyUID: ds.string('x0020000d') ?? '',
     seriesUID: ds.string('x0020000e') ?? '',
     sopUID: ds.string('x00080018') ?? '',
+    sopClassUID: ds.string('x00080016') ?? '',
     modality: ds.string('x00080060') ?? '',
     studyDescription: ds.string('x00081030') ?? '',
     seriesDescription: ds.string('x0008103e') ?? '',
@@ -153,6 +157,7 @@ export function parseTags(bytes: Uint8Array): DicomTags {
     imagePosition: parseDecimals(planeTag(ds, 'x00200032', 'x00209113'), 3),
     patientOrientation: patientOrientation(ds),
     accession: ds.string('x00080050') ?? '',
+    burnedInAnnotation: ds.string('x00280301') ?? '',
     summary: extractSummary(ds),
   }
 }
