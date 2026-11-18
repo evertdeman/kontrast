@@ -6,6 +6,7 @@
 import dicomParser from 'dicom-parser'
 import { extractSummary } from '@/lib/dicom/summary'
 import { parseDecimals } from '@/lib/dicom/geometry'
+import { charsetOf, decoderFor, readString } from '@/lib/dicom/charset'
 
 export interface DicomTags {
   studyUID: string
@@ -136,17 +137,20 @@ export function parseTags(bytes: Uint8Array): DicomTags {
   if (!PIXEL_DATA_TAGS.some((tag) => ds.elements[tag])) {
     throw new SkipError('noImage')
   }
+  const decode = decoderFor(charsetOf(ds))
+  /** Text in the file's character set (SH, LO, PN). */
+  const text = (tag: string) => readString(ds, tag, decode) ?? ''
   return {
     studyUID: ds.string('x0020000d') ?? '',
     seriesUID: ds.string('x0020000e') ?? '',
     sopUID: ds.string('x00080018') ?? '',
     sopClassUID: ds.string('x00080016') ?? '',
     modality: ds.string('x00080060') ?? '',
-    studyDescription: ds.string('x00081030') ?? '',
-    seriesDescription: ds.string('x0008103e') ?? '',
+    studyDescription: text('x00081030'),
+    seriesDescription: text('x0008103e'),
     studyDate: ds.string('x00080020') ?? '',
-    patientName: pn(ds.string('x00100010')),
-    patientId: ds.string('x00100020') ?? '',
+    patientName: pn(text('x00100010')),
+    patientId: text('x00100020'),
     patientSex: ds.string('x00100040') ?? '',
     seriesNumber: num(ds.string('x00200011')),
     instanceNumber: num(ds.string('x00200013')),
@@ -156,7 +160,7 @@ export function parseTags(bytes: Uint8Array): DicomTags {
     imageOrientation: parseDecimals(planeTag(ds, 'x00200037', 'x00209116'), 6),
     imagePosition: parseDecimals(planeTag(ds, 'x00200032', 'x00209113'), 3),
     patientOrientation: patientOrientation(ds),
-    accession: ds.string('x00080050') ?? '',
+    accession: text('x00080050'),
     burnedInAnnotation: ds.string('x00280301') ?? '',
     summary: extractSummary(ds),
   }

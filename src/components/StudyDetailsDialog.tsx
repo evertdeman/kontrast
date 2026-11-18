@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import { getImageTags } from '@/lib/cornerstone/loadDicom'
 import { formatBytes, type StudyInfo } from '@/lib/cornerstone/studies'
 import {
@@ -42,7 +43,8 @@ function Fields({ title, fields }: { title: string; fields: DetailField[] }) {
           <div key={label} className={copyable ? 'col-span-full min-w-0' : 'min-w-0'}>
             <dt className="text-xs text-muted-foreground">{label}</dt>
             <dd className="mt-0.5 flex items-start gap-1.5 text-sm">
-              <span className={copyable ? 'break-all font-mono text-[13px]' : 'break-words'}>
+              {/* min-w-0 lets the value shrink in the flex row; wrap-anywhere breaks long IDs. */}
+              <span className={cn('min-w-0 wrap-anywhere', copyable && 'font-mono text-[13px]')}>
                 {value}
               </span>
               {copyable && (
@@ -81,7 +83,7 @@ export function StudyDetailsDialog({ study: requested, onClose }: StudyDetailsDi
     study.date !== '—' && study.date,
     details.modalities.join(', '),
     `${study.series.length} series`,
-    `${study.imageCount.toLocaleString()} images`,
+    `${study.imageCount.toLocaleString()} image${study.imageCount === 1 ? '' : 's'}`,
     formatBytes(study.bytes),
   ].filter(Boolean)
   const hasRange = details.series.some((s) => s.rangeMm !== null)

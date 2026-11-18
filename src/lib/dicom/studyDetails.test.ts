@@ -113,6 +113,15 @@ describe('getStudyDetails', () => {
     expect(report).toMatchObject({ images: 1, rangeMm: null, durationSeconds: null })
   })
 
+  test('gives no range for a series with slices in several planes', () => {
+    const localiser = new Map([
+      ['ax', tags({ imagePosition: [0, 0, 0] })],
+      ['sag', tags({ imagePosition: [50, 0, 0], imageOrientation: [0, 1, 0, 0, 0, -1] })],
+    ])
+    const details = getStudyDetails(study([series('loc', ['ax', 'sag'])]), (id) => localiser.get(id))
+    expect(details.series[0].rangeMm).toBeNull()
+  })
+
   test('notices files from different patients in one study', () => {
     const other = new Map([...registry, ['b1', tags({ patientId: 'PID-2' })]])
     const mixed = getStudyDetails(study([series('axial', ['a1', 'b1'])]), (id) => other.get(id))
