@@ -151,9 +151,9 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
             <span className="text-faint">Nothing leaves your device.</span>
           </h1>
           <p className="max-w-[600px] text-[17px] leading-[1.55] text-muted-foreground text-pretty">
-            Open DICOM files to scroll, zoom and window through CT, MR and X-ray
-            series, and search every header tag. Everything runs on your own
-            machine.
+            Open DICOM files to scroll through CT, MR and X-ray series, zoom in,
+            adjust window and level, and search every header tag. Everything
+            runs on your own machine.
           </p>
         </div>
 

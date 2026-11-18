@@ -4,7 +4,7 @@ import { Studies } from '@/components/Studies'
 import { Viewer } from '@/components/Viewer'
 import {
   registerFiles,
-  clearImageTags,
+  clearRegisteredFiles,
   describeSkipped,
   type IndexingProgress,
   type RegisteredInstance,
@@ -35,18 +35,25 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
     null,
   )
   const [indexing, setIndexing] = useState<IndexingProgress | null>(null)
+  // Aborted when the session is cleared, so in-flight indexing stops registering files.
+  const session = useRef(new AbortController())
 
   const handleFiles = useCallback(
     async (files: File[], append = false) => {
-      if (files.length === 0) return
+      const { signal } = session.current
+      if (files.length === 0 || signal.aborted) return
       setView('studies')
       setIndexing({ done: 0, total: files.length, unpacking: true })
       try {
         const { files: expanded, failedArchives } = await expandArchives(files)
+        if (signal.aborted) return
         setIndexing({ done: 0, total: expanded.length })
-        const { instances, skipped } = await registerFiles(expanded, (done, total) =>
-          setIndexing({ done, total }),
+        const { instances, skipped } = await registerFiles(
+          expanded,
+          (done, total) => setIndexing({ done, total }),
+          signal,
         )
+        if (signal.aborted) return
         skipped.badArchive += failedArchives
         const skippedNote = describeSkipped(skipped) ?? undefined
         if (instances.length === 0) {
@@ -66,6 +73,7 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
           duration: skippedNote ? 8000 : undefined,
         })
       } catch (err) {
+        if (signal.aborted) return
         console.error(err)
         toast.error('Could not read those files as DICOM.')
         if (!append && registered.length === 0) onExit()
@@ -104,7 +112,8 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
   }, [])
 
   const clearSession = useCallback(() => {
-    clearImageTags()
+    session.current.abort()
+    clearRegisteredFiles()
     onExit()
   }, [onExit])
 

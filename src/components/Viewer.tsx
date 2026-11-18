@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Types } from '@cornerstonejs/core'
+import { Enums, type Types } from '@cornerstonejs/core'
 import { ViewerTopBar } from '@/components/viewer/ViewerTopBar'
 import { SeriesRail } from '@/components/viewer/SeriesRail'
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar'
@@ -24,10 +24,10 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
   const activeSeries =
     study.series.find((s) => s.seriesUID === activeSeriesUID) ?? study.series[0]
   const imageIds = activeSeries.imageIds
+  const total = imageIds.length
 
   const [viewport, setViewport] = useState<Types.IStackViewport | null>(null)
   const [index, setIndex] = useState(0)
-  const [total, setTotal] = useState(imageIds.length)
   const [activeTool, setActiveTool] = useState<PrimaryTool>('WindowLevel')
   const [windowValues, setWindowValues] = useState<{ ww: number; wl: number } | null>(
     null,
@@ -49,18 +49,26 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
   )
 
   const handleIndexChange = useCallback(
-    (i: number, t: number) => {
+    (i: number) => {
       setIndex(i)
-      setTotal(t)
       if (viewport) setWindowValues(currentWindow(viewport))
     },
     [viewport],
   )
 
-  const handleViewportReady = useCallback((vp: Types.IStackViewport) => {
-    setViewport(vp)
-    setWindowValues(currentWindow(vp))
-  }, [])
+  // Keep the W/L readout live while the window is dragged.
+  useEffect(() => {
+    if (!viewport) return
+    const update = () => setWindowValues(currentWindow(viewport))
+    update()
+    viewport.element.addEventListener(Enums.Events.VOI_MODIFIED, update)
+    return () => viewport.element.removeEventListener(Enums.Events.VOI_MODIFIED, update)
+  }, [viewport])
+
+  // The tool group outlives the viewer, so re-apply the selected tool to it.
+  useEffect(() => {
+    if (viewport) setPrimaryTool(activeTool)
+  }, [viewport, activeTool])
 
   const handleSeriesSelect = useCallback(
     (seriesUID: string) => {
@@ -68,16 +76,10 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
       if (!next || next === activeSeries) return
       setPlaying(false)
       setIndex(0)
-      setTotal(next.imageIds.length)
       setActiveSeriesUID(seriesUID)
     },
     [study.series, activeSeries],
   )
-
-  const handleToolChange = useCallback((tool: PrimaryTool) => {
-    setActiveTool(tool)
-    setPrimaryTool(tool)
-  }, [])
 
   const handleInvert = useCallback(() => {
     if (!viewport) return
@@ -122,7 +124,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
         setViewportIndex(viewport, Math.min(total - 1, Math.max(0, current + delta)))
       }
 
-      if (toolByKey[key]) handleToolChange(toolByKey[key])
+      if (toolByKey[key]) setActiveTool(toolByKey[key])
       else if (key === 'i') handleInvert()
       else if (key === 'r') handleReset()
       else if (key === 'h') setHeaderOpen(true)
@@ -135,7 +137,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [viewport, total, handleToolChange, handleInvert, handleReset, toggleInspector])
+  }, [viewport, total, handleInvert, handleReset, toggleInspector])
 
   // Cine loop — advance frames while playing.
   useEffect(() => {
@@ -159,7 +161,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
         <div className="flex min-w-0 flex-1 flex-col">
           <ViewerToolbar
             activeTool={activeTool}
-            onToolChange={handleToolChange}
+            onToolChange={setActiveTool}
             onInvert={handleInvert}
             onReset={handleReset}
             onScreenshot={handleScreenshot}
@@ -177,7 +179,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
             playing={playing}
             onTogglePlay={() => setPlaying((p) => !p)}
             onScrub={handleScrub}
-            onViewportReady={handleViewportReady}
+            onViewportReady={setViewport}
             onIndexChange={handleIndexChange}
             onLoadError={handleLoadError}
           />
