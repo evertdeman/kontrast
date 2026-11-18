@@ -16,7 +16,8 @@ import {
   Search,
   Tags,
   Upload,
-  Move,
+  VenetianMask,
+  FilePen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -343,31 +344,25 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
           <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <FeatureCard
               icon={<Layers className="size-5" />}
-              title="Scroll stacks"
-              body="Wheel or arrow keys through every slice, or play the series as cine."
-              keys={[ACTION_KEYS.prev, ACTION_KEYS.next, ACTION_KEYS.play]}
-            />
-            <FeatureCard
-              icon={<Contrast className="size-5" />}
-              title="Window / level"
-              body="Drag to change brightness and contrast. Invert or reset in one key."
-              keys={[
-                TOOL_KEYS.WindowLevel,
-                ACTION_KEYS.invert,
-                ACTION_KEYS.reset,
-              ]}
-            />
-            <FeatureCard
-              icon={<Move className="size-5" />}
-              title="Zoom & pan"
-              body="Zoom with right-drag, pan with middle-drag, or pick the tool by key."
-              keys={[TOOL_KEYS.Zoom, TOOL_KEYS.Pan]}
+              title="Visualise"
+              body="Scroll through slices, adjust window and level, and measure."
+              keys={[ACTION_KEYS.prev, ACTION_KEYS.next, TOOL_KEYS.WindowLevel]}
             />
             <FeatureCard
               icon={<Tags className="size-5" />}
-              title="Tags inspector"
-              body="Key fields at a glance, plus the full header with search across every tag."
+              title="Browse the header"
+              body="See the key fields at a glance, or search every tag."
               keys={[ACTION_KEYS.header]}
+            />
+            <FeatureCard
+              icon={<VenetianMask className="size-5" />}
+              title="Anonymise"
+              body="Strip identifying details from the headers and save a zip."
+            />
+            <FeatureCard
+              icon={<FilePen className="size-5" />}
+              title="Edit for testing"
+              body="Change, add or remove tags to make test data."
             />
           </div>
         </section>
@@ -412,7 +407,7 @@ function FeatureCard({
   icon: ReactNode;
   title: string;
   body: string;
-  keys: readonly string[];
+  keys?: readonly string[];
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-line-strong bg-card p-5">
@@ -420,11 +415,13 @@ function FeatureCard({
         <div className="flex size-9 items-center justify-center rounded-lg border border-line-strong bg-elevated">
           {icon}
         </div>
-        <div className="flex gap-1">
-          {keys.map((k) => (
-            <Kbd key={k}>{k}</Kbd>
-          ))}
-        </div>
+        {keys && (
+          <div className="flex gap-1">
+            {keys.map((k) => (
+              <Kbd key={k}>{k}</Kbd>
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <h3 className="text-[15px] font-medium">{title}</h3>
