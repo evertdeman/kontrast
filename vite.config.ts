@@ -24,16 +24,52 @@ const pkg = JSON.parse(
   readFileSync(path.join(__dirname, 'package.json'), 'utf8'),
 ) as { version: string }
 
+/**
+ * The app must never send data anywhere, so the browser is told to block any
+ * connection to another server. GitHub Pages can't set response headers, so
+ * this goes in a <meta> tag, and only in the build: the dev server needs an
+ * inline script and a websocket that this policy would block.
+ */
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  // WebAssembly image codecs need to be compiled.
+  "script-src 'self' 'wasm-unsafe-eval'",
+  // React and Radix set inline style attributes.
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ')
+
+function contentSecurityPolicy(): PluginOption {
+  return {
+    name: 'content-security-policy',
+    apply: 'build',
+    transformIndexHtml: () => [
+      {
+        tag: 'meta',
+        attrs: { 'http-equiv': 'Content-Security-Policy', content: CONTENT_SECURITY_POLICY },
+        injectTo: 'head-prepend',
+      },
+    ],
+  }
+}
+
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, isPreview }) => ({
   // Served from https://evertdeman.github.io/kontrast/ on GitHub Pages, so the
-  // production bundle must reference assets under /kontrast/. Dev stays at root.
-  base: command === 'build' ? '/kontrast/' : '/',
+  // production bundle (and `vite preview` of it) must use /kontrast/. Dev stays at root.
+  base: command === 'build' || isPreview ? '/kontrast/' : '/',
   // Compile-time constant; see src/types/globals.d.ts for the type.
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
+    contentSecurityPolicy(),
     react(),
     tailwindcss(),
     // Cornerstone's WASM codecs (@cornerstonejs/codec-*) are UMD/CommonJS

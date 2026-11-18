@@ -43,19 +43,11 @@ export async function filesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
   return out
 }
 
-/** Download the bundled synthetic sample study (served from /sample). */
+/** Download the bundled synthetic sample study, one zip that is unpacked like any other. */
 export async function loadSampleFiles(): Promise<File[]> {
-  const base = `${import.meta.env.BASE_URL}sample/`
-  const res = await fetch(`${base}manifest.json`)
-  if (!res.ok) throw new Error(`Sample manifest: HTTP ${res.status}`)
-  const { files } = (await res.json()) as { files: string[] }
-  return Promise.all(
-    files.map(async (name) => {
-      const r = await fetch(base + name)
-      if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`)
-      return new File([await r.blob()], name, { type: 'application/dicom' })
-    }),
-  )
+  const res = await fetch(`${import.meta.env.BASE_URL}sample.zip`)
+  if (!res.ok) throw new Error(`Sample study: HTTP ${res.status}`)
+  return [new File([await res.blob()], 'sample.zip', { type: 'application/zip' })]
 }
 
 const MAX_ARCHIVE_DEPTH = 2

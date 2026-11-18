@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { HeaderDialog } from '@/components/viewer/HeaderDialog'
 import { Kbd } from '@/components/ui/kbd'
+import { CopyButton } from '@/components/CopyButton'
 import { ResizeHandle } from '@/components/viewer/ResizeHandle'
 import { getImageMetadata } from '@/lib/cornerstone/metadata'
 import { cn } from '@/lib/utils'
@@ -54,7 +55,17 @@ export function Inspector({
               {group.fields.map((f) => (
                 <div key={f.label} className="contents">
                   <dt className="text-muted-foreground">{f.label}</dt>
-                  <dd className="font-mono text-xs leading-5 break-all">{f.value}</dd>
+                  {f.uid ? (
+                    // UIDs are long runs of digits: one line, full value on hover, copy button.
+                    <dd className="flex min-w-0 items-center gap-1">
+                      <span title={f.value} className="truncate font-mono text-xs leading-5">
+                        {f.value}
+                      </span>
+                      <CopyButton value={f.value} label={f.label} />
+                    </dd>
+                  ) : (
+                    <dd className="leading-5 break-words tabular-nums">{f.value}</dd>
+                  )}
                 </div>
               ))}
             </dl>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { toast } from 'sonner'
-import { Copy, TriangleAlert } from 'lucide-react'
+import { TriangleAlert } from 'lucide-react'
+import { CopyButton } from '@/components/CopyButton'
 import {
   Dialog,
   DialogContent,
@@ -24,14 +24,6 @@ interface StudyDetailsDialogProps {
   onClose: () => void
 }
 
-async function copy(value: string) {
-  try {
-    await navigator.clipboard.writeText(value)
-    toast.success('Copied to the clipboard.')
-  } catch {
-    toast.error('Could not copy to the clipboard.')
-  }
-}
 
 function Fields({ title, fields }: { title: string; fields: DetailField[] }) {
   if (fields.length === 0) return null
@@ -47,16 +39,7 @@ function Fields({ title, fields }: { title: string; fields: DetailField[] }) {
               <span className={cn('min-w-0 wrap-anywhere', copyable && 'font-mono text-[13px]')}>
                 {value}
               </span>
-              {copyable && (
-                <button
-                  type="button"
-                  onClick={() => copy(value)}
-                  aria-label={`Copy ${label}`}
-                  className="flex-none rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                >
-                  <Copy className="size-3.5" />
-                </button>
-              )}
+              {copyable && <CopyButton value={value} label={label} />}
             </dd>
           </div>
         ))}

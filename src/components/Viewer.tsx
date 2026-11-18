@@ -144,6 +144,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
       else if (preset) handlePreset(preset)
       else if (key === 'i') handleInvert()
       else if (key === 'r') handleReset()
+      else if (key === 'c') handleScreenshot()
       else if (key === 'h') setHeaderOpen(true)
       else if (key === 't') toggleInspector()
       else if (key === ' ') setPlaying((p) => total > 1 && !p)
@@ -154,7 +155,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [viewport, total, presets, handlePreset, handleInvert, handleReset, toggleInspector])
+  }, [viewport, total, presets, handlePreset, handleInvert, handleReset, handleScreenshot, toggleInspector])
 
   // Cine loop — advance frames while playing.
   useEffect(() => {

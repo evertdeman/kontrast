@@ -46,19 +46,28 @@ interface ViewerToolbarProps {
   onToggleInspector: () => void
 }
 
-const TOOLS: {
+type ToolButton = {
   id: PrimaryTool
   label: string
   Icon: ComponentType<{ className?: string }>
-}[] = [
+}
+
+/** Tools for looking around the image. */
+const VIEW_TOOLS: ToolButton[] = [
   { id: 'WindowLevel', label: 'Window / Level', Icon: Contrast },
   { id: 'Pan', label: 'Pan', Icon: Hand },
   { id: 'Zoom', label: 'Zoom', Icon: Search },
   { id: 'StackScroll', label: 'Scroll stack', Icon: Layers },
+]
+
+/** Tools that draw measurements on the image. */
+const MEASURE_TOOLS: ToolButton[] = [
   { id: 'Length', label: 'Length measurement', Icon: Ruler },
   { id: 'Angle', label: 'Angle measurement', Icon: DraftingCompass },
   { id: 'EllipticalROI', label: 'Elliptical region', Icon: Circle },
 ]
+
+const Divider = () => <div aria-hidden className="mx-1.5 h-5 w-px bg-line-strong" />
 
 function Hint({ label, shortcut }: { label: string; shortcut?: string }) {
   return (
@@ -128,18 +137,21 @@ export function ViewerToolbar({
       aria-label="Tools"
       className="flex h-12 flex-none flex-wrap items-center gap-1 border-b border-line px-2"
     >
-      {TOOLS.map(({ id, label, Icon }) => (
-        <IconButton
-          key={id}
-          label={label}
-          shortcut={TOOL_KEYS[id]}
-          Icon={Icon}
-          active={activeTool === id}
-          onClick={() => onToolChange(id)}
-        />
+      {[VIEW_TOOLS, MEASURE_TOOLS].map((group, i) => (
+        <div key={i} className="contents">
+          {group.map(({ id, label, Icon }) => (
+            <IconButton
+              key={id}
+              label={label}
+              shortcut={TOOL_KEYS[id]}
+              Icon={Icon}
+              active={activeTool === id}
+              onClick={() => onToolChange(id)}
+            />
+          ))}
+          <Divider />
+        </div>
       ))}
-
-      <div className="mx-1.5 h-5 w-px bg-line-strong" />
 
       <Tooltip>
         <TooltipTrigger asChild>
@@ -168,19 +180,29 @@ export function ViewerToolbar({
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          <Hint label="Save screenshot" />
+          <Hint label="Save screenshot" shortcut={ACTION_KEYS.screenshot} />
         </TooltipContent>
       </Tooltip>
 
       {presets.length > 0 && (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-[13px]">
-              <SlidersHorizontal className="size-4" />
-              Presets
-              <ChevronDown className="size-3.5 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-[13px]">
+                  <SlidersHorizontal className="size-4" />
+                  Presets
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <Hint
+                label="CT window presets"
+                shortcut={`${presets[0].key}–${presets[presets.length - 1].key}`}
+              />
+            </TooltipContent>
+          </Tooltip>
           <DropdownMenuContent align="start" className="min-w-56">
             {presets.map((preset) => (
               <DropdownMenuItem key={preset.name} onSelect={() => onPreset(preset)}>
@@ -210,7 +232,7 @@ export function ViewerToolbar({
         </span>
       </div>
 
-      <div className="mx-1.5 h-5 w-px bg-line-strong" />
+      <Divider />
 
       <Tooltip>
         <TooltipTrigger asChild>

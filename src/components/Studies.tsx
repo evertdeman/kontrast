@@ -39,10 +39,8 @@ import {
   pickFileSink,
   writeFilesZip,
 } from '@/lib/exportZip'
-import { BrandMark } from '@/components/brand/BrandMark'
-import { SITE } from '@/lib/site'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { SiteFooter } from '@/components/SiteFooter'
+import { SiteHeader } from '@/components/SiteHeader'
 import {
   NO_STUDY_DESCRIPTION,
   formatBytes,
@@ -159,23 +157,10 @@ export function Studies({
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-line">
-        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-3 px-6 lg:px-10">
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={requestClear} aria-label={`${SITE.name} home`}>
-              <BrandMark />
-            </button>
-            <span className="text-line-strong">/</span>
-            <span className="text-sm font-medium">Studies</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <SiteHeader section="Studies" home={{ onClick: requestClear }} />
 
       {/* Main */}
-      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-6 py-10 lg:px-10">
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-10 sm:px-6 lg:px-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1.5">
             <h1 className="text-[28px] font-semibold tracking-tight">Studies</h1>

@@ -1,4 +1,4 @@
-import { SAMPLE_FILES, longValuesFile, tempDir } from './data'
+import { SAMPLE_ZIP, longValuesFile, tempDir } from './data'
 import {
   canvasHasContent,
   expect,
@@ -25,7 +25,7 @@ test.describe('with the sample open', () => {
   })
 
   test('adding the same files again keeps one study', async ({ page }) => {
-    await openFiles(page, SAMPLE_FILES)
+    await openFiles(page, [SAMPLE_ZIP])
     await expect(page.getByText('Those images are already open.')).toBeVisible()
     await expect(openButtons(page)).toHaveCount(1)
   })
@@ -50,7 +50,7 @@ test.describe('with the sample open', () => {
     await dialog(page).getByRole('button', { name: 'Remove' }).click()
     await expect(page.getByText('No studies loaded')).toBeVisible()
 
-    await openFiles(page, SAMPLE_FILES)
+    await openFiles(page, [SAMPLE_ZIP])
     await expect(openButtons(page)).toHaveCount(1)
   })
 
