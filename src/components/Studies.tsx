@@ -113,7 +113,7 @@ export function Studies({
                 <Loader2 className="size-3.5 animate-spin" />
                 {indexing.unpacking ? 'Unpacking zip archives' : 'Indexing DICOM headers'}
               </span>
-              {!indexing.unpacking && (
+              {indexing.total > 0 && (
                 <span className="font-mono text-muted-foreground">
                   {indexing.done} / {indexing.total} files · {pct}%
                 </span>
