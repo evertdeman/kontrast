@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = 5199
+// The production build, as deployed, including its Content-Security-Policy.
+const PORT = 4199
+const BASE_URL = `http://localhost:${PORT}/kontrast/`
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -12,7 +14,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: BASE_URL,
     trace: 'retain-on-failure',
     viewport: { width: 1600, height: 1000 },
   },
@@ -34,8 +36,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm exec vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
+    command: `pnpm exec vite build && pnpm exec vite preview --port ${PORT} --strictPort`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
 })

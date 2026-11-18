@@ -25,10 +25,10 @@ const pkg = JSON.parse(
 ) as { version: string }
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, isPreview }) => ({
   // Served from https://evertdeman.github.io/kontrast/ on GitHub Pages, so the
-  // production bundle must reference assets under /kontrast/. Dev stays at root.
-  base: command === 'build' ? '/kontrast/' : '/',
+  // production bundle (and `vite preview` of it) must use /kontrast/. Dev stays at root.
+  base: command === 'build' || isPreview ? '/kontrast/' : '/',
   // Compile-time constant; see src/types/globals.d.ts for the type.
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),

@@ -32,14 +32,14 @@ export const openButtons = (page: Page) => page.getByRole('button', { name: 'Ope
 export const SLOW = { timeout: 60_000 }
 
 export async function openSample(page: Page) {
-  await page.goto('/')
+  await page.goto('./')
   await page.getByRole('button', { name: 'Open a sample study' }).click()
   await expect(openButtons(page)).toHaveCount(1, { timeout: 60_000 })
 }
 
 /** Open files from the landing page, or add them on the studies page. */
 export async function openFiles(page: Page, paths: string[]) {
-  if (page.url() === 'about:blank') await page.goto('/')
+  if (page.url() === 'about:blank') await page.goto('./')
   await page.locator('input[type=file]:not([webkitdirectory])').first().setInputFiles(paths)
 }
 
