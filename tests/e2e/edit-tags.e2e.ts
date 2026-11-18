@@ -54,7 +54,7 @@ test('edits tags and saves the copies as a zip', async ({ page }) => {
   await expect(dialog(page)).toContainText('For testing only')
 
   const name = await addChange(page, 'PatientName', 'Test^Patient')
-  await expect(name).toContainText('now: Phantom^Lumen')
+  await expect(name).toContainText('now: Kontrast^Sample')
 
   const date = await addChange(page, '(0008,0020)', '2024-13-99')
   await expect(date).toContainText('isn’t a date as YYYYMMDD')
@@ -66,29 +66,29 @@ test('edits tags and saves the copies as a zip', async ({ page }) => {
   await rows.getByRole('button', { name: 'Remove change' }).click()
   await expect(saveButton(page)).toBeEnabled()
 
-  await addChange(page, 'SeriesDescription', 'Edited coronal', { series: '#2 Coronal' })
+  await addChange(page, 'SeriesDescription', 'Edited FLAIR', { series: '#2 Axial FLAIR' })
   await addChange(page, 'PatientID', '', { action: 'Remove' })
   await saveButton(page).click()
 
   const { name: fileName, entries } = await savedZip(page)
-  expect(fileName).toBe('edited-ct-study.zip')
+  expect(fileName).toBe('edited-mr-study.zip')
   const paths = Object.keys(entries).sort()
-  expect(paths).toHaveLength(96)
-  expect(paths[0]).toBe('01 Axial/IM0000.dcm')
+  expect(paths).toHaveLength(78)
+  expect(paths[0]).toBe('01 Axial T1/IM0000.dcm')
 
   const axial = dicomParser.parseDicom(entries[paths[0]])
   const coronal = dicomParser.parseDicom(entries[paths.find((p) => p.startsWith('02 '))!])
   expect(axial.string('x00100010')).toBe('Test^Patient')
   expect(axial.string('x00080020')).toBe('2024-13-99')
   expect(axial.elements.x00100020).toBeUndefined()
-  expect(axial.string('x0008103e')).toBe('Axial')
-  expect(coronal.string('x0008103e')).toBe('Edited coronal')
+  expect(axial.string('x0008103e')).toBe('Axial T1')
+  expect(coronal.string('x0008103e')).toBe('Edited FLAIR')
   expect(axial.string('x0020000d')).toMatch(/^2\.25\./)
   expect(coronal.string('x0020000d')).toBe(axial.string('x0020000d'))
 })
 
 test('opens an edited copy in Kontrast, marked and downloadable', async ({ page }) => {
-  const original = studyRow(page, 'Phantom Lumen')
+  const original = studyRow(page, 'Kontrast Sample')
   await studyAction(page, original, 'Edit tags…')
   await addChange(page, 'PatientName', 'Copy^Patient')
 
@@ -111,7 +111,7 @@ test('opens an edited copy in Kontrast, marked and downloadable', async ({ page 
 
   await studyAction(page, copy, 'Download zip')
   const { name, entries } = await savedZip(page)
-  expect(name).toBe('edited-ct-study.zip')
+  expect(name).toBe('edited-mr-study.zip')
   const first = Object.keys(entries).sort()[0]
   expect(dicomParser.parseDicom(entries[first]).string('x00100010')).toBe('Copy^Patient')
 

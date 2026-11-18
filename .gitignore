@@ -48,3 +48,7 @@ CLAUDE.md
 
 # Raw demo recording; the README uses docs/demo.gif
 docs/demo.webm
+
+# ICBM152 atlas download, the build-time input for the sample study (not bundled)
+mni_icbm152_nlin_sym_09a_nifti.zip
+mni_icbm152_nlin_sym_09a/

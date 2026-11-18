@@ -32,10 +32,10 @@ test.describe('with the sample open', () => {
 
   test('shows study details', async ({ page }) => {
     await page.getByTitle('Show study details').click()
-    await expect(dialog(page)).toContainText('2025-01-01 · CT · 2 series · 96 images')
-    await expect(dialog(page)).toContainText('Phantom Lumen')
+    await expect(dialog(page)).toContainText('2025-01-01 · MR · 2 series · 78 images')
+    await expect(dialog(page)).toContainText('Kontrast Sample')
     await expect(dialog(page)).toContainText(/Age\s*Unknown/)
-    await expect(dialog(page).getByRole('row', { name: /Axial.*48.*166 mm/ })).toBeVisible()
+    await expect(dialog(page).getByRole('row', { name: /Axial T1.*39.*152 mm/ })).toBeVisible()
     await expect(dialog(page).getByRole('button', { name: 'Copy Study UID' })).toBeVisible()
   })
 

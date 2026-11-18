@@ -14,7 +14,7 @@ test('saves through a plain download when there is no save dialog', async ({ pag
   await page.getByRole('dialog').getByRole('button', { name: 'Save zip' }).click()
   const file = await download
 
-  expect(file.suggestedFilename()).toBe('anonymised-ct-study.zip')
+  expect(file.suggestedFilename()).toBe('anonymised-mr-study.zip')
   const entries = unzipSync(new Uint8Array(readFileSync(await file.path())))
-  expect(Object.keys(entries)).toHaveLength(96)
+  expect(Object.keys(entries)).toHaveLength(78)
 })

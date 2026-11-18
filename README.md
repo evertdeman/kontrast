@@ -111,10 +111,12 @@ The production build is a static site, so it can be served from any static host.
 
 ### Sample study
 
-The sample study in `public/sample.zip` is a synthetic CT head phantom made of simple shapes. It contains no patient data. To regenerate it you need Python with `numpy` and `pydicom`:
+The sample study in `public/sample.zip` is a simulated brain MRI with two co-registered series, Axial T1 and Axial FLAIR. The anatomy comes from the [ICBM152 2009 nonlinear-symmetric template](https://nist.mni.mcgill.ca/icbm-152-nonlinear-atlases-2009/) — an *average* of 152 brains, not a real, identifiable patient — and the T1 and FLAIR contrast is synthesised from its tissue maps. It contains no real patient data.
+
+To regenerate it you need Python with `numpy`, `scipy`, `pydicom`, `nibabel` and `pylibjpeg-openjpeg`, and the template's NIfTI files (download `mni_icbm152_nlin_sym_09a_nifti.zip` from the [ICBM page](https://nist.mni.mcgill.ca/icbm-152-nonlinear-atlases-2009/) and unzip it):
 
 ```bash
-python scripts/generate_sample.py
+python scripts/generate_sample.py path/to/mni_icbm152_nlin_sym_09a
 ```
 
 ### Test files (optional)
@@ -154,7 +156,7 @@ tests/
   demo/               the scripted README demo
 docs/                 README media
 scripts/              sample study generator
-public/sample.zip     bundled synthetic sample study
+public/sample.zip     bundled sample study (simulated brain MRI)
 ```
 
 ## Releases
@@ -190,3 +192,5 @@ In plain words:
 This summary is for convenience only; the [licence text](LICENSE) is what applies.
 
 Third-party libraries are used under their own licences.
+
+The bundled sample study is derived from the ICBM152 2009 nonlinear-symmetric template, © 1993–2004 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University, used under its permissive licence (use, copy, modify and distribute for any purpose, provided the copyright notice is retained). See Fonov et al., *NeuroImage* 2011 and 2009.
