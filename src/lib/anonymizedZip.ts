@@ -1,0 +1,157 @@
+/**
+ * Anonymise a study's files and stream them into a zip, written to disk via
+ * the File System Access API where available, or offered as a download.
+ */
+import { Zip, ZipDeflate } from 'fflate'
+import { createAnonymizer, type AnonymizeOptions } from '@/lib/dicom/anonymize'
+
+/** Where the zip's bytes go. */
+export interface ZipSink {
+  write(chunk: Uint8Array): Promise<void>
+  close(): Promise<void>
+  abort(): Promise<void>
+}
+
+export interface AnonymizedZipResult {
+  written: number
+  /** Files that could not be anonymised and were left out. */
+  failed: number
+}
+
+const pad = (n: number, width: number) => String(n).padStart(width, '0')
+
+/** fflate writes plain zip, without the ZIP64 extensions for larger archives. */
+const MAX_ENTRIES = 0xffff
+const MAX_ZIP_BYTES = 0xffffffff
+
+/**
+ * Anonymise every file and write it to `sink` as a zip. Entries are named by
+ * position (`series-01/0001.dcm`), since original file names can contain
+ * patient names. Files that fail are left out rather than copied unchanged.
+ */
+export async function writeAnonymizedZip(
+  series: File[][],
+  sink: ZipSink,
+  {
+    options,
+    onProgress,
+    signal,
+  }: {
+    options?: Partial<AnonymizeOptions>
+    onProgress?: (done: number, total: number) => void
+    signal?: AbortSignal
+  } = {},
+): Promise<AnonymizedZipResult> {
+  const anonymizer = createAnonymizer(options)
+  const total = series.reduce((n, files) => n + files.length, 0)
+  let written = 0
+  let failed = 0
+
+  let pending = Promise.resolve()
+  let zipError: Error | null = null
+  let zipBytes = 0
+  const zip = new Zip((err, chunk) => {
+    zipBytes += chunk?.length ?? 0
+    if (err) zipError = err
+    else if (zipBytes > MAX_ZIP_BYTES) zipError = new Error('The zip would be larger than 4 GB.')
+    if (!zipError) pending = pending.then(() => sink.write(chunk))
+  })
+
+  try {
+    if (total > MAX_ENTRIES) {
+      throw new Error(`A zip can hold at most ${MAX_ENTRIES.toLocaleString()} files.`)
+    }
+    for (const [s, files] of series.entries()) {
+      for (const [i, file] of files.entries()) {
+        signal?.throwIfAborted()
+        let bytes: ArrayBuffer
+        try {
+          bytes = anonymizer.anonymize(await file.arrayBuffer())
+        } catch (err) {
+          console.warn(`Could not anonymise ${file.name}`, err)
+          failed += 1
+          onProgress?.(written + failed, total)
+          continue
+        }
+        const entry = new ZipDeflate(`series-${pad(s + 1, 2)}/${pad(i + 1, 4)}.dcm`, {
+          level: 1,
+        })
+        zip.add(entry)
+        entry.push(new Uint8Array(bytes), true)
+        // Wait for the sink so at most one file's output is held in memory.
+        await pending
+        if (zipError) throw zipError
+        signal?.throwIfAborted()
+        written += 1
+        onProgress?.(written + failed, total)
+      }
+    }
+    if (written === 0) throw new Error('None of the files could be anonymised.')
+    signal?.throwIfAborted()
+    zip.end()
+    await pending
+    if (zipError) throw zipError
+    await sink.close()
+    return { written, failed }
+  } catch (err) {
+    zip.terminate()
+    await pending.catch(() => {})
+    await sink.abort().catch(() => {})
+    throw err
+  }
+}
+
+/** Collects the zip in memory, then hands it to the browser as a download. */
+export function downloadSink(fileName: string): ZipSink {
+  let chunks: BlobPart[] = []
+  return {
+    async write(chunk) {
+      chunks.push(chunk as Uint8Array<ArrayBuffer>)
+    },
+    async close() {
+      const url = URL.createObjectURL(new Blob(chunks, { type: 'application/zip' }))
+      chunks = []
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    },
+    async abort() {
+      chunks = []
+    },
+  }
+}
+
+type SaveFilePicker = (options: {
+  suggestedName: string
+  types: { description: string; accept: Record<string, string[]> }[]
+}) => Promise<FileSystemFileHandle>
+
+/**
+ * Ask where to save the zip and stream straight to that file, so large
+ * studies never sit in memory. Returns null when the browser lacks the File
+ * System Access API. Throws an AbortError if the user cancels the picker.
+ * Must be called from a user gesture.
+ */
+export async function pickFileSink(fileName: string): Promise<ZipSink | null> {
+  const picker = (window as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker
+  if (!picker) return null
+  const handle = await picker.call(window, {
+    suggestedName: fileName,
+    types: [{ description: 'Zip archive', accept: { 'application/zip': ['.zip'] } }],
+  })
+  const stream = await handle.createWritable()
+  return {
+    write: (chunk) => stream.write(chunk as Uint8Array<ArrayBuffer>),
+    close: () => stream.close(),
+    async abort() {
+      await stream.abort()
+      // The picker has already created an empty file; remove it where supported.
+      await (handle as { remove?: () => Promise<void> }).remove?.()
+    },
+  }
+}
+
+export const isAbortError = (err: unknown) =>
+  err instanceof DOMException && err.name === 'AbortError'

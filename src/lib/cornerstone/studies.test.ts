@@ -8,6 +8,7 @@ function tags(overrides: Partial<DicomTags> = {}): DicomTags {
     studyUID: 'study-1',
     seriesUID: 'series-1',
     sopUID: '',
+    sopClassUID: '',
     modality: 'CT',
     studyDescription: 'Chest',
     seriesDescription: 'Axial',
@@ -24,6 +25,7 @@ function tags(overrides: Partial<DicomTags> = {}): DicomTags {
     imagePosition: null,
     patientOrientation: null,
     accession: 'ACC1',
+    burnedInAnnotation: '',
     summary: {},
     ...overrides,
   }
