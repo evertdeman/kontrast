@@ -227,8 +227,10 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
         )}
 
         <p className="text-xs text-muted-foreground">
-          Based on the DICOM Basic Application Level Confidentiality Profile. Check the result
-          before you share it.
+          Removes identifying information from the DICOM headers, following the DICOM Basic
+          Application Level Confidentiality Profile. Text or faces visible in the images are not
+          removed. The result may still count as personal data under laws such as the GDPR, so
+          check it before you share it.
         </p>
 
         {progress && (
