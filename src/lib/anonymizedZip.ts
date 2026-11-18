@@ -3,7 +3,7 @@
  * the File System Access API where available, or offered as a download.
  */
 import { Zip, ZipDeflate } from 'fflate'
-import { createAnonymizer } from '@/lib/dicom/anonymize'
+import { createAnonymizer, type AnonymizeOptions } from '@/lib/dicom/anonymize'
 
 /** Where the zip's bytes go. */
 export interface ZipSink {
@@ -20,6 +20,10 @@ export interface AnonymizedZipResult {
 
 const pad = (n: number, width: number) => String(n).padStart(width, '0')
 
+/** fflate writes plain zip, without the ZIP64 extensions for larger archives. */
+const MAX_ENTRIES = 0xffff
+const MAX_ZIP_BYTES = 0xffffffff
+
 /**
  * Anonymise every file and write it to `sink` as a zip. Entries are named by
  * position (`series-01/0001.dcm`), since original file names can contain
@@ -29,23 +33,34 @@ export async function writeAnonymizedZip(
   series: File[][],
   sink: ZipSink,
   {
+    options,
     onProgress,
     signal,
-  }: { onProgress?: (done: number, total: number) => void; signal?: AbortSignal } = {},
+  }: {
+    options?: Partial<AnonymizeOptions>
+    onProgress?: (done: number, total: number) => void
+    signal?: AbortSignal
+  } = {},
 ): Promise<AnonymizedZipResult> {
-  const anonymizer = createAnonymizer()
+  const anonymizer = createAnonymizer(options)
   const total = series.reduce((n, files) => n + files.length, 0)
   let written = 0
   let failed = 0
 
   let pending = Promise.resolve()
   let zipError: Error | null = null
+  let zipBytes = 0
   const zip = new Zip((err, chunk) => {
+    zipBytes += chunk?.length ?? 0
     if (err) zipError = err
-    else pending = pending.then(() => sink.write(chunk))
+    else if (zipBytes > MAX_ZIP_BYTES) zipError = new Error('The zip would be larger than 4 GB.')
+    if (!zipError) pending = pending.then(() => sink.write(chunk))
   })
 
   try {
+    if (total > MAX_ENTRIES) {
+      throw new Error(`A zip can hold at most ${MAX_ENTRIES.toLocaleString()} files.`)
+    }
     for (const [s, files] of series.entries()) {
       for (const [i, file] of files.entries()) {
         signal?.throwIfAborted()
@@ -66,11 +81,13 @@ export async function writeAnonymizedZip(
         // Wait for the sink so at most one file's output is held in memory.
         await pending
         if (zipError) throw zipError
+        signal?.throwIfAborted()
         written += 1
         onProgress?.(written + failed, total)
       }
     }
     if (written === 0) throw new Error('None of the files could be anonymised.')
+    signal?.throwIfAborted()
     zip.end()
     await pending
     if (zipError) throw zipError
@@ -79,7 +96,7 @@ export async function writeAnonymizedZip(
   } catch (err) {
     zip.terminate()
     await pending.catch(() => {})
-    await sink.abort()
+    await sink.abort().catch(() => {})
     throw err
   }
 }
@@ -128,7 +145,11 @@ export async function pickFileSink(fileName: string): Promise<ZipSink | null> {
   return {
     write: (chunk) => stream.write(chunk as Uint8Array<ArrayBuffer>),
     close: () => stream.close(),
-    abort: () => stream.abort(),
+    async abort() {
+      await stream.abort()
+      // The picker has already created an empty file; remove it where supported.
+      await (handle as { remove?: () => Promise<void> }).remove?.()
+    },
   }
 }
 

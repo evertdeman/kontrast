@@ -88,6 +88,32 @@ describe('writeAnonymizedZip', () => {
     expect(sink.close).not.toHaveBeenCalled()
   })
 
+  test('refuses more files than a zip can hold', async () => {
+    const { sink } = memorySink()
+    const files = Array.from({ length: 0x10000 }, () => new File([], 'x.dcm'))
+    await expect(writeAnonymizedZip([files], sink)).rejects.toThrow('at most')
+    expect(sink.write).not.toHaveBeenCalled()
+  })
+
+  test('applies the anonymisation options', async () => {
+    const { sink, entries } = memorySink()
+    const file = new File(
+      [buildDicom({ '00080020': ['DA', '20240131'], '7FE00010': ['OW', new Uint8Array(8)] }) as Uint8Array<ArrayBuffer>],
+      'a.dcm',
+    )
+    await writeAnonymizedZip([[file]], sink, { options: { dates: 'keep' } })
+    const ds = dicomParser.parseDicom(entries()['series-01/0001.dcm'])
+    expect(ds.string('x00080020')).toBe('20240131')
+  })
+
+  test('reports the original error even if discarding the output fails', async () => {
+    const { sink } = memorySink()
+    sink.abort.mockRejectedValueOnce(new Error('disk gone'))
+    await expect(writeAnonymizedZip([[new File(['x'], 'x.txt')]], sink)).rejects.toThrow(
+      'None of the files',
+    )
+  })
+
   test('stops and discards the output when aborted', async () => {
     const { sink } = memorySink()
     const controller = new AbortController()

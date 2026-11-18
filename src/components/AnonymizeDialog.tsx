@@ -13,7 +13,12 @@ import {
 import { ProgressBar } from '@/components/ProgressBar'
 import { getImageFile, getImageTags } from '@/lib/cornerstone/loadDicom'
 import type { StudyInfo } from '@/lib/cornerstone/studies'
-import { mayHaveBurnedInText } from '@/lib/dicom/anonymize'
+import { cn } from '@/lib/utils'
+import {
+  DEFAULT_OPTIONS,
+  mayHaveBurnedInText,
+  type AnonymizeOptions,
+} from '@/lib/dicom/anonymize'
 import {
   downloadSink,
   isAbortError,
@@ -49,6 +54,26 @@ function zipName(study: StudyInfo): string {
   return `anonymised-${modality ? `${modality}-` : ''}study.zip`
 }
 
+const DATE_CHOICES: { value: AnonymizeOptions['dates']; label: string; help: string }[] = [
+  { value: 'remove', label: 'Remove', help: 'All dates and times are removed.' },
+  {
+    value: 'shift',
+    label: 'Shift',
+    help: 'Every date moves by the same random number of days, up to a year either way. Times, the intervals between scans and the patient’s age at each scan stay correct.',
+  },
+  {
+    value: 'keep',
+    label: 'Keep',
+    help: 'Dates and times are kept as they are. Exact dates, especially the date of birth, can help identify a patient.',
+  },
+]
+
+const KEEP_CHOICES: { key: 'keepAge' | 'keepSex' | 'keepSizeAndWeight'; label: string }[] = [
+  { key: 'keepAge', label: 'Age' },
+  { key: 'keepSex', label: 'Sex' },
+  { key: 'keepSizeAndWeight', label: 'Height and weight' },
+]
+
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`
 
 export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogProps) {
@@ -57,6 +82,7 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
   if (requested && requested !== lastStudy) setLastStudy(requested)
   const study = requested ?? lastStudy
 
+  const [options, setOptions] = useState<AnonymizeOptions>(DEFAULT_OPTIONS)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const controller = useRef<AbortController | null>(null)
   const running = progress !== null
@@ -85,6 +111,7 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
     setProgress({ done: 0, total: fileCount })
     try {
       const { written, failed } = await writeAnonymizedZip(files, sink, {
+        options,
         signal: abort.signal,
         onProgress: (done, total) => setProgress({ done, total }),
       })
@@ -116,6 +143,7 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
   return (
     <Dialog open={requested !== null} onOpenChange={(open) => !open && !running && onClose()}>
       <DialogContent
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
         showCloseButton={!running}
         onEscapeKeyDown={(e) => running && e.preventDefault()}
         onInteractOutside={(e) => running && e.preventDefault()}
@@ -130,15 +158,61 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
 
         <ul className="list-disc space-y-1.5 pl-5 text-sm">
           <li>The patient’s name and ID are replaced with a random code, such as ANON-1A2B3C4D.</li>
-          <li>The birth date, sex, age and other patient details are removed.</li>
-          <li>All dates and times are removed.</li>
           <li>
-            Study and series descriptions, the institution, staff names and comments are removed.
+            Other patient details, descriptions, the institution, staff names and comments are
+            removed.
           </li>
           <li>
             UIDs are replaced consistently across the study, and private tags are removed.
           </li>
         </ul>
+
+        <fieldset disabled={running} className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-medium">Dates, including the date of birth</legend>
+          <div role="radiogroup" className="inline-flex self-start rounded-lg border border-line-strong p-0.5">
+            {DATE_CHOICES.map(({ value, label }) => (
+              <label
+                key={value}
+                className={cn(
+                  'cursor-pointer rounded-md px-3 py-1 text-[13px] transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+                  options.dates === value
+                    ? 'bg-secondary font-medium text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="anonymize-dates"
+                  value={value}
+                  checked={options.dates === value}
+                  onChange={() => setOptions((o) => ({ ...o, dates: value }))}
+                  className="sr-only"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {DATE_CHOICES.find((c) => c.value === options.dates)?.help}
+          </p>
+        </fieldset>
+
+        <fieldset disabled={running}>
+          <legend className="mb-2 text-sm font-medium">Also keep</legend>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {KEEP_CHOICES.map(({ key, label }) => (
+              <label key={key} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={options[key]}
+                  onChange={(e) => setOptions((o) => ({ ...o, [key]: e.target.checked }))}
+                  className="size-4 accent-primary"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         {burnedIn > 0 && (
           <div className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
