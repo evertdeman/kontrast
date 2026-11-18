@@ -1,3 +1,11 @@
+## [1.3.1](https://github.com/evertdeman/kontrast/compare/v1.3.0...v1.3.1) (2026-11-18)
+
+### Bug Fixes
+
+* decode names and text in the file's character set ([e17c547](https://github.com/evertdeman/kontrast/commit/e17c547a12f7178b8bcce00a4557edcbdf64a98d))
+* show no scan range for series with slices in several planes ([3c25344](https://github.com/evertdeman/kontrast/commit/3c25344d950320f8e1a6a850976ad15fe8f55891))
+* wrap long values in the study details dialog ([a21af89](https://github.com/evertdeman/kontrast/commit/a21af89d0d176ad4eeaaff3a7e84d1b2a627d287))
+
 # [1.3.0](https://github.com/evertdeman/kontrast/compare/v1.2.0...v1.3.0) (2026-11-18)
 
 ### Features
