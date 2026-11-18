@@ -43,9 +43,12 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
       const { signal } = session.current
       if (files.length === 0 || signal.aborted) return
       setView('studies')
-      setIndexing({ done: 0, total: files.length, unpacking: true })
+      setIndexing({ done: 0, total: 0, unpacking: true })
       try {
-        const { files: expanded, failedArchives } = await expandArchives(files)
+        const { files: expanded, failedArchives } = await expandArchives(files, {
+          onProgress: (done, total) => setIndexing({ done, total, unpacking: true }),
+          signal,
+        })
         if (signal.aborted) return
         setIndexing({ done: 0, total: expanded.length })
         const { instances, skipped } = await registerFiles(

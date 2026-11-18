@@ -44,6 +44,32 @@ describe('expandArchives', () => {
     expect(names(files)).toEqual(['IM0001', 'IM0002'])
   })
 
+  test('reports progress as entries are unpacked', async () => {
+    const progress: [number, number][] = []
+    await expandArchives([zipFile('a.zip', { IM0001: strToU8('a'), IM0002: strToU8('b') })], {
+      onProgress: (done, total) => progress.push([done, total]),
+    })
+    expect(progress.at(-1)).toEqual([2, 2])
+  })
+
+  test('stops when aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const zip = zipFile('a.zip', { IM0001: strToU8('a') })
+    await expect(expandArchives([zip], { signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError',
+    })
+  })
+
+  test('keeps the readable entries of a partly damaged archive', async () => {
+    const bytes = zipSync({ IM0001: strToU8('a'.repeat(1000)), IM0002: strToU8('b') })
+    bytes[40] ^= 0xff // corrupt IM0001's deflated data
+    const zip = new File([bytes as Uint8Array<ArrayBuffer>], 'a.zip')
+    const { files, failedArchives } = await expandArchives([zip])
+    expect(names(files)).toEqual(['IM0002'])
+    expect(failedArchives).toBe(1)
+  })
+
   test('counts damaged archives instead of throwing', async () => {
     const broken = new File([strToU8('not really a zip')], 'broken.zip')
     const dcm = new File([strToU8('x')], 'IM0001.dcm')
