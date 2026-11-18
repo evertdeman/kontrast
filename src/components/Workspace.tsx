@@ -119,6 +119,15 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
     setView('viewer')
   }, [])
 
+  // Studies live only in this tab, so ask before the browser closes or reloads it.
+  const hasSession = registered.length > 0 || indexing !== null
+  useEffect(() => {
+    if (!hasSession) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [hasSession])
+
   const removeStudy = useCallback(
     (study: StudyInfo) => {
       const imageIds = new Set(study.series.flatMap((s) => s.imageIds))

@@ -16,6 +16,12 @@ describe('formatField', () => {
     ['F', 'sex', 'Female'],
     ['M', 'sex', 'Male'],
     ['X', 'sex', 'X'],
+    ['044Y', 'age', '44 years'],
+    ['001Y', 'age', '1 year'],
+    ['006M', 'age', '6 months'],
+    ['003W', 'age', '3 weeks'],
+    ['010D', 'age', '10 days'],
+    ['44', 'age', '44'],
   ] as const)('%s as %s → %s', (raw, format, expected) => {
     expect(formatField(raw, format)).toBe(expected)
   })

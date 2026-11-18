@@ -5,7 +5,7 @@
 import type { DataSet } from 'dicom-parser'
 import { valueForKeyword } from '@/lib/dicom/header'
 
-type Format = 'date' | 'time' | 'person' | 'list' | 'sex'
+type Format = 'date' | 'time' | 'person' | 'list' | 'sex' | 'age'
 
 interface FieldSpec {
   label: string
@@ -27,7 +27,7 @@ export const SUMMARY_GROUPS: GroupSpec[] = [
       { label: 'ID', keyword: 'PatientID' },
       { label: 'Birth date', keyword: 'PatientBirthDate', format: 'date' },
       { label: 'Sex', keyword: 'PatientSex', format: 'sex' },
-      { label: 'Age', keyword: 'PatientAge' },
+      { label: 'Age', keyword: 'PatientAge', format: 'age' },
       { label: 'Weight', keyword: 'PatientWeight', unit: 'kg' },
       { label: 'Size', keyword: 'PatientSize', unit: 'm' },
     ],
@@ -142,6 +142,16 @@ function formatTime(raw: string): string {
 
 const SEX: Record<string, string> = { M: 'Male', F: 'Female', O: 'Other' }
 
+const AGE_UNITS: Record<string, string> = { D: 'day', W: 'week', M: 'month', Y: 'year' }
+
+/** A DICOM age string ("044Y") as words ("44 years"). */
+function formatAge(raw: string): string {
+  const m = /^(\d{3})([DWMY])$/.exec(raw.trim())
+  if (!m) return raw
+  const n = Number(m[1])
+  return `${n} ${AGE_UNITS[m[2]]}${n === 1 ? '' : 's'}`
+}
+
 export function formatField(raw: string, format?: Format, unit?: string): string {
   let value = raw
   switch (format) {
@@ -159,6 +169,9 @@ export function formatField(raw: string, format?: Format, unit?: string): string
       break
     case 'sex':
       value = SEX[raw] ?? raw
+      break
+    case 'age':
+      value = formatAge(raw)
       break
   }
   return unit ? `${value} ${unit}` : value
