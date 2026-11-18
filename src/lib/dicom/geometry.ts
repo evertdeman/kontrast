@@ -43,7 +43,7 @@ export interface SliceGeometry {
 
 const ORIENTATION_TOLERANCE = 1e-2
 
-function sameOrientation(a: number[], b: number[]): boolean {
+export function sameOrientation(a: number[], b: number[]): boolean {
   return a.every((v, i) => Math.abs(v - b[i]) < ORIENTATION_TOLERANCE)
 }
 

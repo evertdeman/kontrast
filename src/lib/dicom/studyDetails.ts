@@ -4,7 +4,7 @@
  */
 import type { DicomTags } from '@/lib/dicom/parse'
 import type { StudyInfo } from '@/lib/cornerstone/studies'
-import { cross, dot, type Vec3 } from '@/lib/dicom/geometry'
+import { cross, dot, sameOrientation, type Vec3 } from '@/lib/dicom/geometry'
 import { SUMMARY_GROUPS, formatField } from '@/lib/dicom/summary'
 
 export interface DetailField {
@@ -50,9 +50,13 @@ export function parseTime(raw: string | undefined): number | null {
   return Number(m[1]) * 3600 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0) + Number(m[4] ?? 0)
 }
 
+/** Only meaningful for parallel slices; a three-plane localiser has no single range. */
 function rangeMm(tags: DicomTags[]): number | null {
   const orientation = tags.find((t) => t.imageOrientation)?.imageOrientation
   if (!orientation) return null
+  if (tags.some((t) => t.imageOrientation && !sameOrientation(t.imageOrientation, orientation))) {
+    return null
+  }
   const normal = cross(orientation.slice(0, 3) as Vec3, orientation.slice(3, 6) as Vec3)
   const offsets = tags
     .map((t) => t.imagePosition)
