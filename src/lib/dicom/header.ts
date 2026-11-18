@@ -5,6 +5,7 @@
  */
 import dcmjs from 'dcmjs'
 import dicomParser, { type DataSet, type Element } from 'dicom-parser'
+import { charsetOf, decoderFor, readString, usesCharset, type Decode } from '@/lib/dicom/charset'
 
 const { dictionary, nameMap } = dcmjs.data.DicomMetaDictionary
 
@@ -89,7 +90,15 @@ function printableOrBinary(bytes: Uint8Array): string {
   return `<binary, ${bytes.length.toLocaleString()} bytes>`
 }
 
-export function formatValue(ds: DataSet, element: Element, vr: string): string {
+const latin1 = decoderFor(undefined)
+
+/** `decode` is for text in the dataset's character set; other strings are ASCII. */
+export function formatValue(
+  ds: DataSet,
+  element: Element,
+  vr: string,
+  decode: Decode = latin1,
+): string {
   const { tag, length } = element
   if (length === 0 && !element.encapsulatedPixelData) return ''
 
@@ -100,8 +109,9 @@ export function formatValue(ds: DataSet, element: Element, vr: string): string {
       : `<pixel data, ${length.toLocaleString()} bytes>`
   }
 
-  if (STRING_VRS.has(vr)) return ds.string(tag) ?? ''
-  if (TEXT_VRS.has(vr)) return ds.text(tag) ?? ''
+  const textDecode = usesCharset(vr) ? decode : latin1
+  if (STRING_VRS.has(vr)) return readString(ds, tag, textDecode) ?? ''
+  if (TEXT_VRS.has(vr)) return readString(ds, tag, textDecode, { keepLeading: true }) ?? ''
 
   const numeric = NUMERIC_VRS[vr]
   if (numeric) {
@@ -124,7 +134,13 @@ export function formatValue(ds: DataSet, element: Element, vr: string): string {
   return printableOrBinary(bytesOf(ds, element))
 }
 
-function walk(ds: DataSet, depth: number, prefix: string, out: HeaderRow[]) {
+/** The decoder for a dataset: its own character set, else the one it is nested in. */
+function decoderOf(ds: DataSet, inherited: Decode = latin1): Decode {
+  return ds.elements.x00080005 ? decoderFor(charsetOf(ds)) : inherited
+}
+
+function walk(ds: DataSet, depth: number, prefix: string, out: HeaderRow[], inherited?: Decode) {
+  const decode = decoderOf(ds, inherited)
   const tags = Object.keys(ds.elements).sort()
   for (const t of tags) {
     const element = ds.elements[t]
@@ -152,12 +168,12 @@ function walk(ds: DataSet, depth: number, prefix: string, out: HeaderRow[]) {
           depth: depth + 1,
           kind: 'item',
         })
-        if (item.dataSet) walk(item.dataSet, depth + 2, `${id}/${i}/`, out)
+        if (item.dataSet) walk(item.dataSet, depth + 2, `${id}/${i}/`, out, decode)
       })
       continue
     }
 
-    let value = formatValue(ds, element, vr)
+    let value = formatValue(ds, element, vr, decode)
     if (value.length > MAX_VALUE_CHARS) value = `${value.slice(0, MAX_VALUE_CHARS)}…`
     out.push({ id, tag: formatTag(t), vr, name, value, depth, kind: 'element' })
   }
@@ -176,9 +192,13 @@ export async function readHeaderRows(file: File): Promise<HeaderRow[]> {
 }
 
 /** Look up and format a single top-level element by keyword. */
-export function valueForKeyword(ds: DataSet, keyword: string): string {
+export function valueForKeyword(
+  ds: DataSet,
+  keyword: string,
+  decode: Decode = decoderOf(ds),
+): string {
   const tag = tagForKeyword(keyword)
   const element = tag ? ds.elements[tag] : undefined
   if (!element || element.items) return ''
-  return formatValue(ds, element, describe(ds, element).vr).trim()
+  return formatValue(ds, element, describe(ds, element).vr, decode).trim()
 }

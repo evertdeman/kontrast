@@ -4,6 +4,7 @@
  */
 import type { DataSet } from 'dicom-parser'
 import { valueForKeyword } from '@/lib/dicom/header'
+import { charsetOf, decoderFor } from '@/lib/dicom/charset'
 
 type Format = 'date' | 'time' | 'person' | 'list' | 'sex' | 'age'
 
@@ -123,8 +124,9 @@ const ALL_KEYWORDS = SUMMARY_GROUPS.flatMap((g) => g.fields.map((f) => f.keyword
 /** Raw (unformatted) values of every curated keyword present in the dataset. */
 export function extractSummary(ds: DataSet): Record<string, string> {
   const out: Record<string, string> = {}
+  const decode = decoderFor(charsetOf(ds))
   for (const keyword of ALL_KEYWORDS) {
-    const value = valueForKeyword(ds, keyword)
+    const value = valueForKeyword(ds, keyword, decode)
     if (value) out[keyword] = value
   }
   return out
