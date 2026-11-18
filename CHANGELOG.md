@@ -1,3 +1,9 @@
+# [1.2.0](https://github.com/evertdeman/kontrast/compare/v1.1.0...v1.2.0) (2026-11-18)
+
+### Features
+
+* manage studies in the session, and add thumbnails, CT presets and ROI tools ([a117e52](https://github.com/evertdeman/kontrast/commit/a117e525824a6a2bf094bd2cccfb4a11bef9f163))
+
 # [1.1.0](https://github.com/evertdeman/kontrast/compare/v1.0.4...v1.1.0) (2026-11-18)
 
 ### Bug Fixes
