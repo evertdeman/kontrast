@@ -7,9 +7,16 @@ import {
   getImageFile,
   getImageTags,
   registerFiles,
+  releaseImages,
 } from './loadDicom'
 
-vi.mock('@cornerstonejs/core', () => ({ cache: { purgeCache: vi.fn() } }))
+vi.mock('@cornerstonejs/core', () => ({
+  cache: {
+    purgeCache: vi.fn(),
+    getImageLoadObject: vi.fn(() => undefined),
+    removeImageLoadObject: vi.fn(),
+  },
+}))
 vi.mock('@cornerstonejs/dicom-image-loader', () => {
   // Mirrors the real file manager: ids are array indices, and purge() restarts them.
   let files: (File | undefined)[] = []
@@ -25,7 +32,11 @@ vi.mock('@cornerstonejs/dicom-image-loader', () => {
           files = []
         }),
       },
-      dataSetCacheManager: { purge: vi.fn() },
+      dataSetCacheManager: {
+        purge: vi.fn(),
+        isLoaded: vi.fn(() => false),
+        unload: vi.fn(),
+      },
     },
   }
 })
@@ -38,8 +49,12 @@ const IMAGE: DicomDataset = {
   '7FE00010': ['OW', new Uint8Array(8)],
 }
 
+let nextSop = 1
+
+/** A DICOM image file; each gets a fresh SOPInstanceUID unless one is given. */
 function dicomFile(name: string, extra: DicomDataset = {}): File {
-  return new File([buildDicom({ ...IMAGE, ...extra }) as Uint8Array<ArrayBuffer>], name)
+  const dataset = { '00080018': ['UI', `1.2.3.100.${nextSop++}`], ...IMAGE, ...extra } as DicomDataset
+  return new File([buildDicom(dataset) as Uint8Array<ArrayBuffer>], name)
 }
 
 beforeEach(() => {
@@ -101,6 +116,52 @@ describe('registerFiles', () => {
     const { instances } = await registerFiles([file], undefined, controller.signal)
     expect(instances).toEqual([])
     expect(wadouri.fileManager.add).not.toHaveBeenCalled()
+  })
+})
+
+describe('duplicates', () => {
+  test('skips files that are already registered', async () => {
+    const file = dicomFile('IM0001.dcm')
+    await registerFiles([file])
+    const again = await registerFiles([file, dicomFile('IM0002.dcm')])
+    expect(again.instances).toHaveLength(1)
+    expect(again.skipped.duplicate).toBe(1)
+  })
+
+  test('skips copies within one selection', async () => {
+    const file = dicomFile('IM0001.dcm')
+    const { instances, skipped } = await registerFiles([file, file])
+    expect(instances).toHaveLength(1)
+    expect(skipped.duplicate).toBe(1)
+  })
+
+  test('registers files again once they were released or cleared', async () => {
+    const file = dicomFile('IM0001.dcm')
+    const first = await registerFiles([file])
+    releaseImages(first.instances[0].imageIds)
+    expect((await registerFiles([file])).instances).toHaveLength(1)
+    clearRegisteredFiles()
+    expect((await registerFiles([file])).instances).toHaveLength(1)
+  })
+})
+
+describe('releaseImages', () => {
+  test('forgets the images and releases their files and cached pixels', async () => {
+    const { instances } = await registerFiles([
+      dicomFile('multi.dcm', { '00280008': ['IS', '2'] }),
+      dicomFile('keep.dcm'),
+    ])
+    const [released, kept] = instances
+    vi.mocked(cache.getImageLoadObject).mockImplementation(
+      (id) => (id === released.imageIds[0] ? ({} as never) : undefined),
+    )
+
+    releaseImages(released.imageIds)
+
+    for (const id of released.imageIds) expect(getImageTags(id)).toBeUndefined()
+    expect(getImageTags(kept.imageIds[0])).toBeDefined()
+    expect(wadouri.fileManager.remove).toHaveBeenCalledOnce()
+    expect(cache.removeImageLoadObject).toHaveBeenCalledWith(released.imageIds[0], { force: true })
   })
 })
 

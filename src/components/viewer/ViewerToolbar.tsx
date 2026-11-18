@@ -10,8 +10,19 @@ import {
   Camera,
   PanelRightClose,
   PanelRightOpen,
+  DraftingCompass,
+  Circle,
+  SlidersHorizontal,
+  ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import type { WindowPreset } from '@/lib/cornerstone/windowing'
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +39,9 @@ interface ViewerToolbarProps {
   onInvert: () => void
   onReset: () => void
   onScreenshot: () => void
+  /** Window presets for the current series; the menu is hidden when empty. */
+  presets: WindowPreset[]
+  onPreset: (preset: WindowPreset) => void
   inspectorCollapsed: boolean
   onToggleInspector: () => void
 }
@@ -42,6 +56,8 @@ const TOOLS: {
   { id: 'Zoom', label: 'Zoom', Icon: Search },
   { id: 'StackScroll', label: 'Scroll stack', Icon: Layers },
   { id: 'Length', label: 'Length measurement', Icon: Ruler },
+  { id: 'Angle', label: 'Angle measurement', Icon: DraftingCompass },
+  { id: 'EllipticalROI', label: 'Elliptical region', Icon: Circle },
 ]
 
 function Hint({ label, shortcut }: { label: string; shortcut?: string }) {
@@ -101,6 +117,8 @@ export function ViewerToolbar({
   onInvert,
   onReset,
   onScreenshot,
+  presets,
+  onPreset,
   inspectorCollapsed,
   onToggleInspector,
 }: ViewerToolbarProps) {
@@ -153,6 +171,29 @@ export function ViewerToolbar({
           <Hint label="Save screenshot" />
         </TooltipContent>
       </Tooltip>
+
+      {presets.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-[13px]">
+              <SlidersHorizontal className="size-4" />
+              Presets
+              <ChevronDown className="size-3.5 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-56">
+            {presets.map((preset) => (
+              <DropdownMenuItem key={preset.name} onSelect={() => onPreset(preset)}>
+                <span className="flex-1">{preset.name}</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  W {preset.ww} L {preset.wl}
+                </span>
+                <Kbd className="ml-2">{preset.key}</Kbd>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <div className="flex-1" />
 

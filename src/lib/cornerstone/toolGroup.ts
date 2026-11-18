@@ -14,6 +14,8 @@ import {
   ZoomTool,
   StackScrollTool,
   LengthTool,
+  AngleTool,
+  EllipticalROITool,
   Enums as ToolEnums,
 } from '@cornerstonejs/tools'
 
@@ -22,7 +24,14 @@ const { MouseBindings } = ToolEnums
 export const TOOL_GROUP_ID = 'dicom-viewer-toolgroup'
 
 /** Tools the user can put on the LEFT mouse button via the toolbar. */
-export type PrimaryTool = 'WindowLevel' | 'Pan' | 'Zoom' | 'StackScroll' | 'Length'
+export type PrimaryTool =
+  | 'WindowLevel'
+  | 'Pan'
+  | 'Zoom'
+  | 'StackScroll'
+  | 'Length'
+  | 'Angle'
+  | 'EllipticalROI'
 
 const NAME: Record<PrimaryTool, string> = {
   WindowLevel: WindowLevelTool.toolName,
@@ -30,6 +39,8 @@ const NAME: Record<PrimaryTool, string> = {
   Zoom: ZoomTool.toolName,
   StackScroll: StackScrollTool.toolName,
   Length: LengthTool.toolName,
+  Angle: AngleTool.toolName,
+  EllipticalROI: EllipticalROITool.toolName,
 }
 
 /** Permanent (non-left) bindings each tool keeps regardless of selection. */
@@ -39,6 +50,8 @@ const BASE_BINDINGS: Record<PrimaryTool, number[]> = {
   Zoom: [MouseBindings.Secondary],
   StackScroll: [MouseBindings.Wheel],
   Length: [],
+  Angle: [],
+  EllipticalROI: [],
 }
 
 export function ensureToolGroup() {

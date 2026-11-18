@@ -5,6 +5,7 @@ import { Viewer } from '@/components/Viewer'
 import {
   registerFiles,
   clearRegisteredFiles,
+  releaseImages,
   describeSkipped,
   type IndexingProgress,
   type RegisteredInstance,
@@ -59,6 +60,10 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
         if (signal.aborted) return
         skipped.badArchive += failedArchives
         const skippedNote = describeSkipped(skipped) ?? undefined
+        if (instances.length === 0 && skipped.duplicate > 0) {
+          toast.info('Those images are already open.')
+          return
+        }
         if (instances.length === 0) {
           toast.error('No DICOM images found in that selection.', {
             description: skippedNote,
@@ -114,6 +119,19 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
     setView('viewer')
   }, [])
 
+  const removeStudy = useCallback(
+    (study: StudyInfo) => {
+      const imageIds = new Set(study.series.flatMap((s) => s.imageIds))
+      releaseImages([...imageIds])
+      const remaining = registered.filter((inst) => !imageIds.has(inst.imageIds[0]))
+      setRegistered(remaining)
+      setStudies(groupIntoStudies(remaining))
+      if (active?.studyUID === study.studyUID) setActive(null)
+      toast.success(`Removed “${study.description}” from the session.`)
+    },
+    [registered, active],
+  )
+
   const clearSession = useCallback(() => {
     session.current.abort()
     clearRegisteredFiles()
@@ -140,6 +158,7 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
       indexing={indexing}
       onOpenSeries={openSeries}
       onAddFiles={(files) => handleFiles(files, true)}
+      onRemoveStudy={removeStudy}
       onClearSession={clearSession}
     />
   )
