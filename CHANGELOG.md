@@ -1,3 +1,9 @@
+## [1.0.3](https://github.com/evertdeman/kontrast/compare/v1.0.2...v1.0.3) (2026-11-18)
+
+### Bug Fixes
+
+* Improve subtitle on landing page ([158f123](https://github.com/evertdeman/kontrast/commit/158f1238c3a35a91a83f4e92e26d920d4839bc73))
+
 ## [1.0.2](https://github.com/evertdeman/kontrast/compare/v1.0.1...v1.0.2) (2026-11-18)
 
 ### Bug Fixes
