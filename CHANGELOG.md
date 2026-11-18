@@ -1,3 +1,15 @@
+# [1.5.0](https://github.com/evertdeman/kontrast/compare/v1.4.0...v1.5.0) (2026-11-18)
+
+### Features
+
+* add a privacy page, and block outside connections with a CSP ([03dc28b](https://github.com/evertdeman/kontrast/commit/03dc28b219442c7cd2c9624b42f9b05d24607076))
+* share one header across the landing and studies pages, and mention anonymising in the hero ([8ea31b8](https://github.com/evertdeman/kontrast/commit/8ea31b84cb983fff51157d99eade03b45a42097e))
+* **viewer:** tidy the header panel and group the toolbar ([b8c93d5](https://github.com/evertdeman/kontrast/commit/b8c93d569fff1085ff19ac0d61231087429f6513))
+
+### Performance Improvements
+
+* load the sample study as one zip ([c37e3bf](https://github.com/evertdeman/kontrast/commit/c37e3bf70f777ae1a72946818b381cf50662da47))
+
 # [1.4.0](https://github.com/evertdeman/kontrast/compare/v1.3.1...v1.4.0) (2026-11-18)
 
 ### Bug Fixes
