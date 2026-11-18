@@ -7,6 +7,8 @@ export const TOOL_KEYS: Record<PrimaryTool, string> = {
   Zoom: 'Z',
   StackScroll: 'S',
   Length: 'L',
+  Angle: 'A',
+  EllipticalROI: 'E',
 }
 
 export const ACTION_KEYS = {

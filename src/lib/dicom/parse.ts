@@ -37,7 +37,7 @@ export interface DicomTags {
   summary: Record<string, string>
 }
 
-export type SkipReason = 'notDicom' | 'noImage' | 'unsupported' | 'badArchive'
+export type SkipReason = 'notDicom' | 'noImage' | 'unsupported' | 'badArchive' | 'duplicate'
 
 const DICOM_EXT = /\.(dcm|dicom|ima|img)$/i
 
@@ -170,7 +170,7 @@ export function frameImageIds(baseImageId: string, numberOfFrames: number): stri
 }
 
 export function emptySkipCounts(): Record<SkipReason, number> {
-  return { notDicom: 0, noImage: 0, unsupported: 0, badArchive: 0 }
+  return { notDicom: 0, noImage: 0, unsupported: 0, badArchive: 0, duplicate: 0 }
 }
 
 const SKIP_LABELS: Record<SkipReason, [string, string]> = {
@@ -178,6 +178,7 @@ const SKIP_LABELS: Record<SkipReason, [string, string]> = {
   noImage: ['has no image (report, PDF or other non-image object)', 'have no image (reports, PDFs or other non-image objects)'],
   unsupported: ['uses an unsupported compression (e.g. video)', 'use an unsupported compression (e.g. video)'],
   badArchive: ['is a zip that could not be opened (damaged or encrypted)', 'are zips that could not be opened (damaged or encrypted)'],
+  duplicate: ['was already open', 'were already open'],
 }
 
 /** Human-readable summary of skipped files, or null if none were skipped. */

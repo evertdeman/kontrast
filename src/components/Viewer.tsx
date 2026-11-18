@@ -8,7 +8,13 @@ import { Inspector } from '@/components/viewer/Inspector'
 import { useInspectorLayout } from '@/components/viewer/useInspectorLayout'
 import { setViewportIndex } from '@/components/Viewport'
 import { setPrimaryTool, type PrimaryTool } from '@/lib/cornerstone/toolGroup'
-import { currentWindow, saveScreenshot } from '@/lib/cornerstone/windowing'
+import {
+  applyWindow,
+  currentWindow,
+  presetsFor,
+  saveScreenshot,
+  type WindowPreset,
+} from '@/lib/cornerstone/windowing'
 import { getStudyHeader } from '@/lib/cornerstone/metadata'
 import type { StudyInfo } from '@/lib/cornerstone/studies'
 import { TOOL_KEYS, isTypingTarget } from '@/lib/shortcuts'
@@ -96,6 +102,15 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
     setWindowValues(currentWindow(viewport))
   }, [viewport])
 
+  const presets = useMemo(() => presetsFor(header.modality), [header.modality])
+
+  const handlePreset = useCallback(
+    (preset: WindowPreset) => {
+      if (viewport) applyWindow(viewport, preset)
+    },
+    [viewport],
+  )
+
   const handleScrub = useCallback(
     (i: number) => {
       setViewportIndex(viewport, i)
@@ -124,7 +139,9 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
         setViewportIndex(viewport, Math.min(total - 1, Math.max(0, current + delta)))
       }
 
+      const preset = presets.find((p) => p.key === key)
       if (toolByKey[key]) setActiveTool(toolByKey[key])
+      else if (preset) handlePreset(preset)
       else if (key === 'i') handleInvert()
       else if (key === 'r') handleReset()
       else if (key === 'h') setHeaderOpen(true)
@@ -137,7 +154,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [viewport, total, handleInvert, handleReset, toggleInspector])
+  }, [viewport, total, presets, handlePreset, handleInvert, handleReset, toggleInspector])
 
   // Cine loop — advance frames while playing.
   useEffect(() => {
@@ -165,6 +182,8 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
             onInvert={handleInvert}
             onReset={handleReset}
             onScreenshot={handleScreenshot}
+            presets={presets}
+            onPreset={handlePreset}
             inspectorCollapsed={inspector.collapsed}
             onToggleInspector={toggleInspector}
           />

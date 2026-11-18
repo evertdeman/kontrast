@@ -45,6 +45,10 @@ const tagRegistry = new Map<string, DicomTags>()
 const fileRegistry = new Map<string, File>()
 /** Base imageIds handed out by Cornerstone's file manager ("dicomfile:<n>"). */
 const managedImageIds = new Set<string>()
+/** SOPInstanceUIDs already registered, so adding the same files again skips them. */
+const sopInstanceUids = new Set<string>()
+
+const baseImageId = (imageId: string) => imageId.split('?')[0]
 
 export function getImageTags(imageId: string): DicomTags | undefined {
   return tagRegistry.get(imageId)
@@ -67,10 +71,34 @@ export function clearRegisteredFiles() {
     wadouri.fileManager.remove(Number(imageId.slice('dicomfile:'.length)))
   }
   managedImageIds.clear()
+  sopInstanceUids.clear()
   tagRegistry.clear()
   fileRegistry.clear()
   wadouri.dataSetCacheManager.purge()
   cache.purgeCache()
+}
+
+/**
+ * Forget some registered images, e.g. when a study is removed from the list,
+ * and drop their decoded pixels from Cornerstone's caches.
+ */
+export function releaseImages(imageIds: string[]) {
+  for (const imageId of imageIds) {
+    const sopUid = tagRegistry.get(imageId)?.sopUID
+    if (sopUid) sopInstanceUids.delete(sopUid)
+    tagRegistry.delete(imageId)
+    fileRegistry.delete(imageId)
+    if (cache.getImageLoadObject(imageId)) cache.removeImageLoadObject(imageId, { force: true })
+  }
+  for (const base of new Set(imageIds.map(baseImageId))) {
+    if (!managedImageIds.delete(base)) continue
+    const index = base.slice('dicomfile:'.length)
+    wadouri.fileManager.remove(Number(index))
+    // Each frame that was loaded holds a reference to the file's dataset.
+    for (let i = 0; i < 10_000 && wadouri.dataSetCacheManager.isLoaded(index); i++) {
+      wadouri.dataSetCacheManager.unload(index)
+    }
+  }
 }
 
 /**
@@ -102,11 +130,15 @@ export async function registerFiles(
         const tags = parseTags(bytes)
         // The session may have been cleared while this file was being read.
         if (signal?.aborted) return
-        const baseImageId = wadouri.fileManager.add(file)
-        managedImageIds.add(baseImageId)
-        await prefetchPart10Instance(baseImageId, bytes)
+        if (tags.sopUID) {
+          if (sopInstanceUids.has(tags.sopUID)) throw new SkipError('duplicate')
+          sopInstanceUids.add(tags.sopUID)
+        }
+        const base = wadouri.fileManager.add(file)
+        managedImageIds.add(base)
+        await prefetchPart10Instance(base, bytes)
         if (signal?.aborted) return
-        const imageIds = frameImageIds(baseImageId, tags.numberOfFrames)
+        const imageIds = frameImageIds(base, tags.numberOfFrames)
         for (const imageId of imageIds) {
           tagRegistry.set(imageId, tags)
           fileRegistry.set(imageId, file)

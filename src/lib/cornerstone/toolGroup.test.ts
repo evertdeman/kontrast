@@ -23,6 +23,8 @@ vi.mock('@cornerstonejs/tools', () => {
     ZoomTool: tool('Zoom'),
     StackScrollTool: tool('StackScroll'),
     LengthTool: tool('Length'),
+    AngleTool: tool('Angle'),
+    EllipticalROITool: tool('EllipticalROI'),
     Enums: { MouseBindings: { Primary: 1, Secondary: 2, Auxiliary: 4, Wheel: 524288 } },
   }
 })
@@ -51,6 +53,8 @@ describe('tool group', () => {
       Zoom: [2],
       StackScroll: [524288],
       Length: [],
+      Angle: [],
+      EllipticalROI: [],
     })
     expect(ensureToolGroup()).toBe(group)
     expect(ToolGroupManager.createToolGroup).toHaveBeenCalledOnce()
@@ -67,6 +71,8 @@ describe('tool group', () => {
       Zoom: [2],
       StackScroll: [524288],
       Length: [],
+      Angle: [],
+      EllipticalROI: [],
     })
   })
 })

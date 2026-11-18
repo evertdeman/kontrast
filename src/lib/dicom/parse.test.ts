@@ -187,10 +187,16 @@ describe('describeSkipped', () => {
   })
 
   test('lists every reason with a total', () => {
-    const message = describeSkipped({ notDicom: 2, noImage: 0, unsupported: 1, badArchive: 1 })
+    const message = describeSkipped({
+      notDicom: 2,
+      noImage: 0,
+      unsupported: 1,
+      badArchive: 1,
+      duplicate: 2,
+    })
     expect(message).toBe(
-      'Skipped 4 files: 2 not DICOM; 1 uses an unsupported compression (e.g. video); ' +
-        '1 is a zip that could not be opened (damaged or encrypted).',
+      'Skipped 6 files: 2 not DICOM; 1 uses an unsupported compression (e.g. video); ' +
+        '1 is a zip that could not be opened (damaged or encrypted); 2 were already open.',
     )
   })
 })

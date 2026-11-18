@@ -5,15 +5,25 @@ import {
   ChevronRight,
   ArrowRight,
   Loader2,
-  Layers,
   FolderOpen,
   VenetianMask,
+  ListX,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AnonymizeDialog } from '@/components/AnonymizeDialog'
 import { ProgressBar } from '@/components/ProgressBar'
+import { SeriesThumbnail } from '@/components/SeriesThumbnail'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { SITE } from '@/lib/site'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -30,23 +40,29 @@ interface StudiesProps {
   indexing: IndexingProgress | null
   onOpenSeries: (studyUID: string, seriesUID: string) => void
   onAddFiles: (files: File[]) => void
+  onRemoveStudy: (study: StudyInfo) => void
   onClearSession: () => void
 }
 
 const toFiles = (list: FileList | null): File[] => (list ? Array.from(list) : [])
 
 const COLS =
-  'grid-cols-[72px_minmax(0,2.2fr)_minmax(0,1fr)_110px_72px_84px_84px_128px]'
+  'grid-cols-[72px_minmax(0,2.2fr)_minmax(0,1fr)_110px_72px_84px_84px_176px]'
 
 export function Studies({
   studies,
   indexing,
   onOpenSeries,
   onAddFiles,
+  onRemoveStudy,
   onClearSession,
 }: StudiesProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [anonymizing, setAnonymizing] = useState<StudyInfo | null>(null)
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  // Clearing throws away everything indexed so far, so ask first when there is something to lose.
+  const requestClear = () =>
+    studies.length > 0 || indexing ? setConfirmingClear(true) : onClearSession()
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
 
@@ -69,7 +85,7 @@ export function Studies({
       <header className="border-b border-line">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-3 px-6 lg:px-10">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onClearSession} aria-label={`${SITE.name} home`}>
+            <button type="button" onClick={requestClear} aria-label={`${SITE.name} home`}>
               <BrandMark />
             </button>
             <span className="text-line-strong">/</span>
@@ -103,7 +119,7 @@ export function Studies({
               <Plus className="size-4" />
               Add files
             </Button>
-            <Button variant="secondary" onClick={onClearSession}>
+            <Button variant="secondary" onClick={requestClear}>
               <Trash2 className="size-4" />
               Clear all
             </Button>
@@ -160,6 +176,7 @@ export function Studies({
                   }
                   onOpenSeries={(seriesUID) => onOpenSeries(study.studyUID, seriesUID)}
                   onAnonymize={() => setAnonymizing(study)}
+                  onRemove={() => onRemoveStudy(study)}
                 />
               ))}
             </div>
@@ -176,6 +193,28 @@ export function Studies({
       <SiteFooter newTab />
 
       <AnonymizeDialog study={anonymizing} onClose={() => setAnonymizing(null)} />
+
+      <Dialog open={confirmingClear} onOpenChange={setConfirmingClear}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear all studies?</DialogTitle>
+            <DialogDescription>
+              {studies.length === 0
+                ? 'Indexing stops and nothing is kept.'
+                : `${studies.length === 1 ? 'The study' : `All ${studies.length} studies`} will be removed from Kontrast.`}{' '}
+              Your files are not changed, and you can open them again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary">Cancel</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={onClearSession}>
+              Clear all
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Hidden inputs — fully local, no upload */}
       <input
@@ -212,6 +251,7 @@ function StudyRow({
   onOpenStudy,
   onOpenSeries,
   onAnonymize,
+  onRemove,
 }: {
   study: StudyInfo
   expanded: boolean
@@ -219,6 +259,7 @@ function StudyRow({
   onOpenStudy: () => void
   onOpenSeries: (seriesUID: string) => void
   onAnonymize: () => void
+  onRemove: () => void
 }) {
   return (
     <div className="border-b border-line last:border-b-0">
@@ -259,6 +300,19 @@ function StudyRow({
             </TooltipTrigger>
             <TooltipContent side="bottom">Anonymise and save as zip</TooltipContent>
           </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onRemove}
+                aria-label="Remove from session"
+                className="flex size-8 items-center justify-center rounded-md border border-line-strong text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <ListX className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Remove from session</TooltipContent>
+          </Tooltip>
           <button
             type="button"
             onClick={onOpenStudy}
@@ -298,9 +352,7 @@ function SeriesCard({
       onClick={onOpen}
       className="flex items-center gap-2.5 rounded-[10px] border border-line-strong bg-background p-2 text-left transition-colors hover:border-ring"
     >
-      <div className="flex size-13 flex-none items-center justify-center rounded-md border border-line bg-gradient-to-br from-zinc-700 to-black">
-        <Layers className="size-4 text-zinc-500" />
-      </div>
+      <SeriesThumbnail imageIds={series.imageIds} className="size-13" />
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="truncate text-[13px] font-medium">
           {series.description}

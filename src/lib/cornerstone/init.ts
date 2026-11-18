@@ -14,6 +14,8 @@ import {
   ZoomTool,
   StackScrollTool,
   LengthTool,
+  AngleTool,
+  EllipticalROITool,
 } from '@cornerstonejs/tools'
 
 let initialized = false
@@ -32,6 +34,8 @@ async function run(): Promise<void> {
   addTool(ZoomTool)
   addTool(StackScrollTool)
   addTool(LengthTool)
+  addTool(AngleTool)
+  addTool(EllipticalROITool)
 
   initialized = true
 }

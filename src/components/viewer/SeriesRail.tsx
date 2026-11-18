@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Layers, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
+import { SeriesThumbnail } from '@/components/SeriesThumbnail'
 import { cn } from '@/lib/utils'
 import type { SeriesInfo } from '@/lib/cornerstone/studies'
 
@@ -61,9 +62,7 @@ export function SeriesRail({ series, activeSeriesUID, onSelect }: SeriesRailProp
                   : 'border-transparent hover:bg-elevated/60',
               )}
             >
-              <div className="flex size-14 flex-none items-center justify-center rounded-md border border-line bg-gradient-to-br from-zinc-700 to-black">
-                <Layers className="size-4 text-zinc-500" />
-              </div>
+              <SeriesThumbnail imageIds={s.imageIds} className="size-14" />
               <div className="flex min-w-0 flex-col gap-1">
                 <span className="truncate text-[13px] font-medium">
                   {s.description}
