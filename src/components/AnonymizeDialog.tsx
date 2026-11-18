@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { ProgressBar } from '@/components/ProgressBar'
 import { getImageFile, getImageTags } from '@/lib/cornerstone/loadDicom'
+import { studyFiles } from '@/lib/cornerstone/studyFiles'
 import type { StudyInfo } from '@/lib/cornerstone/studies'
 import { cn } from '@/lib/utils'
 import {
@@ -24,20 +25,17 @@ import {
   isAbortError,
   pickFileSink,
   writeAnonymizedZip,
-} from '@/lib/anonymizedZip'
+  anonymizeFiles,
+} from '@/lib/exportZip'
 
 interface AnonymizeDialogProps {
   /** The study to anonymise; the dialog is open while this is set. */
   study: StudyInfo | null
   onClose: () => void
+  /** Open the anonymised copies in this session. */
+  onOpenFiles: (files: File[]) => void
 }
 
-/** Each series' files in display order; multi-frame files appear once. */
-function seriesFiles(study: StudyInfo): File[][] {
-  return study.series.map((series) => [
-    ...new Set(series.imageIds.map(getImageFile).filter((f): f is File => !!f)),
-  ])
-}
 
 function countBurnedInRisk(study: StudyInfo): number {
   const files = new Map<File, boolean>()
@@ -76,18 +74,19 @@ const KEEP_CHOICES: { key: 'keepAge' | 'keepSex' | 'keepSizeAndWeight'; label: s
 
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`
 
-export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogProps) {
+export function AnonymizeDialog({ study: requested, onClose, onOpenFiles }: AnonymizeDialogProps) {
   // Keep showing the last study while the dialog animates closed.
   const [lastStudy, setLastStudy] = useState(requested)
   if (requested && requested !== lastStudy) setLastStudy(requested)
   const study = requested ?? lastStudy
 
   const [options, setOptions] = useState<AnonymizeOptions>(DEFAULT_OPTIONS)
+  const [output, setOutput] = useState<'zip' | 'open'>('zip')
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const controller = useRef<AbortController | null>(null)
   const running = progress !== null
 
-  const files = useMemo(() => (study ? seriesFiles(study) : []), [study])
+  const files = useMemo(() => (study ? studyFiles(study).map((s) => s.files) : []), [study])
   const fileCount = files.reduce((n, f) => n + f.length, 0)
   const burnedIn = useMemo(() => (study ? countBurnedInRisk(study) : 0), [study])
 
@@ -96,30 +95,40 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
 
   async function start() {
     if (!study) return
-    const fileName = zipName(study)
+    const leftOut = (failed: number) =>
+      failed
+        ? `${plural(failed, 'file')} could not be read and ${failed === 1 ? 'was' : 'were'} left out.`
+        : undefined
     let sink
-    try {
-      // The save picker needs the click's user activation, so ask first.
-      sink = (await pickFileSink(fileName)) ?? downloadSink(fileName)
-    } catch (err) {
-      if (!isAbortError(err)) toast.error('Could not open the file for saving.')
-      return
+    if (output === 'zip') {
+      const fileName = zipName(study)
+      try {
+        // The save picker needs the click's user activation, so ask first.
+        sink = (await pickFileSink(fileName)) ?? downloadSink(fileName)
+      } catch (err) {
+        if (!isAbortError(err)) toast.error('Could not open the file for saving.')
+        return
+      }
     }
 
     const abort = new AbortController()
     controller.current = abort
     setProgress({ done: 0, total: fileCount })
+    const callbacks = {
+      options,
+      signal: abort.signal,
+      onProgress: (done: number, total: number) => setProgress({ done, total }),
+    }
     try {
-      const { written, failed } = await writeAnonymizedZip(files, sink, {
-        options,
-        signal: abort.signal,
-        onProgress: (done, total) => setProgress({ done, total }),
-      })
-      toast.success(`Anonymised ${plural(written, 'file')}.`, {
-        description: failed
-          ? `${plural(failed, 'file')} could not be read and ${failed === 1 ? 'was' : 'were'} left out.`
-          : undefined,
-      })
+      if (!sink) {
+        const { files: copies, failed } = await anonymizeFiles(files, callbacks)
+        if (failed) toast.warning(leftOut(failed))
+        onClose()
+        onOpenFiles(copies)
+        return
+      }
+      const { written, failed } = await writeAnonymizedZip(files, sink, callbacks)
+      toast.success(`Anonymised ${plural(written, 'file')}.`, { description: leftOut(failed) })
       onClose()
     } catch (err) {
       if (isAbortError(err)) return
@@ -166,6 +175,8 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
             UIDs are replaced consistently across the study, and private tags are removed.
           </li>
         </ul>
+
+        <hr className="border-line" />
 
         <fieldset disabled={running} className="flex flex-col gap-2">
           <legend className="mb-2 text-sm font-medium">Dates, including the date of birth</legend>
@@ -214,6 +225,30 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
           </div>
         </fieldset>
 
+        <hr className="border-line" />
+
+        <fieldset disabled={running} className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+          <legend className="sr-only">Output</legend>
+          <span className="font-medium">Output</span>
+          {(
+            [
+              ['zip', 'Save as zip'],
+              ['open', 'Open in Kontrast'],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value} className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="anonymize-output"
+                checked={output === value}
+                onChange={() => setOutput(value)}
+                className="accent-primary"
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+
         {burnedIn > 0 && (
           <div className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
             <TriangleAlert className="mt-0.5 size-4 flex-none text-amber-600 dark:text-amber-400" />
@@ -253,7 +288,7 @@ export function AnonymizeDialog({ study: requested, onClose }: AnonymizeDialogPr
             Cancel
           </Button>
           <Button onClick={start} disabled={running || fileCount === 0}>
-            Save zip
+            {output === 'zip' ? 'Save zip' : 'Open copy'}
           </Button>
         </DialogFooter>
       </DialogContent>

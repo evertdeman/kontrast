@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { toast } from 'sonner'
 import {
   Plus,
   Trash2,
@@ -8,20 +9,42 @@ import {
   FolderOpen,
   VenetianMask,
   ListX,
+  Ellipsis,
+  Info,
+  FilePen,
+  Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog, type Confirmation } from '@/components/ConfirmDialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { AnonymizeDialog } from '@/components/AnonymizeDialog'
 import { ProgressBar } from '@/components/ProgressBar'
 import { SeriesThumbnail } from '@/components/SeriesThumbnail'
 import { StudyDetailsDialog } from '@/components/StudyDetailsDialog'
+import { EditTagsDialog } from '@/components/EditTagsDialog'
+import { getImageFile } from '@/lib/cornerstone/loadDicom'
+import { studyFiles } from '@/lib/cornerstone/studyFiles'
+import {
+  copyKindOf,
+  type CopyKind,
+  downloadSink,
+  isAbortError,
+  pickFileSink,
+  writeFilesZip,
+} from '@/lib/exportZip'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { SITE } from '@/lib/site'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { SiteFooter } from '@/components/SiteFooter'
 import {
+  NO_STUDY_DESCRIPTION,
   formatBytes,
   type StudyInfo,
   type SeriesInfo,
@@ -39,8 +62,14 @@ interface StudiesProps {
 
 const toFiles = (list: FileList | null): File[] => (list ? Array.from(list) : [])
 
+/** How Kontrast made a study, if it is a copy (anonymised or edited) rather than the user's own files. */
+const copyKindOfStudy = (study: StudyInfo) => copyKindOf(getImageFile(study.series[0]?.imageIds[0] ?? ''))
+const isCopy = (study: StudyInfo) => !!copyKindOfStudy(study)
+
+const COPY_LABELS: Record<CopyKind, string> = { anonymised: 'Anonymised copy', edited: 'Edited copy' }
+
 const COLS =
-  'grid-cols-[72px_minmax(0,2.2fr)_minmax(0,1fr)_110px_72px_84px_84px_176px]'
+  'grid-cols-[72px_minmax(0,2.2fr)_minmax(0,1fr)_110px_72px_84px_84px_128px]'
 
 export function Studies({
   studies,
@@ -53,6 +82,7 @@ export function Studies({
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [anonymizing, setAnonymizing] = useState<StudyInfo | null>(null)
   const [describing, setDescribing] = useState<StudyInfo | null>(null)
+  const [editing, setEditing] = useState<StudyInfo | null>(null)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
 
   // Clearing throws away everything indexed so far, so ask first when there is something to lose.
@@ -64,16 +94,49 @@ export function Studies({
         studies.length === 0
           ? 'Indexing stops and nothing is kept.'
           : `${studies.length === 1 ? 'The study' : `All ${studies.length} studies`} will be removed from Kontrast.`
-      } Your files are not changed, and you can open them again.`,
+      } Your files are not changed, and you can open them again.${
+        studies.some(isCopy)
+          ? ' Copies made in Kontrast exist only here, so download any you want to keep first.'
+          : ''
+      }`,
       confirmLabel: 'Clear all',
       onConfirm: onClearSession,
     })
   }
 
+  /** Save a copy Kontrast made (anonymised or edited) as a zip again. */
+  async function downloadStudy(study: StudyInfo) {
+    const series = studyFiles(study)
+    const kind = copyKindOf(series[0]?.files[0]) ?? 'kontrast'
+    const modality = study.modality.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const fileName = `${kind}-${modality ? `${modality}-` : ''}study.zip`
+    let sink
+    try {
+      // The save picker needs the click's user activation, so ask first.
+      sink = (await pickFileSink(fileName)) ?? downloadSink(fileName)
+    } catch (err) {
+      if (!isAbortError(err)) toast.error('Could not open the file for saving.')
+      return
+    }
+    const id = toast.loading('Saving the zip…')
+    try {
+      const { written } = await writeFilesZip(series, sink)
+      toast.success(`Saved ${written.toLocaleString()} file${written === 1 ? '' : 's'}.`, { id })
+    } catch (err) {
+      console.error(err)
+      toast.error('Could not save the zip.', {
+        id,
+        description: err instanceof Error ? err.message : undefined,
+      })
+    }
+  }
+
   const requestRemove = (study: StudyInfo) =>
     setConfirmation({
       title: 'Remove this study?',
-      description: `“${study.description}” will be removed from Kontrast. Your files are not changed, and you can open them again.`,
+      description: isCopy(study)
+        ? `“${study.description}” is a copy made in Kontrast and exists only here. Download it first if you want to keep it.`
+        : `“${study.description}” will be removed from Kontrast. Your files are not changed, and you can open them again.`,
       confirmLabel: 'Remove',
       onConfirm: () => onRemoveStudy(study),
     })
@@ -191,6 +254,9 @@ export function Studies({
                   onOpenSeries={(seriesUID) => onOpenSeries(study.studyUID, seriesUID)}
                   onAnonymize={() => setAnonymizing(study)}
                   onShowDetails={() => setDescribing(study)}
+                  onEditTags={() => setEditing(study)}
+                  copyKind={copyKindOfStudy(study)}
+                  onDownload={isCopy(study) ? () => downloadStudy(study) : undefined}
                   onRemove={() => requestRemove(study)}
                 />
               ))}
@@ -207,8 +273,17 @@ export function Studies({
 
       <SiteFooter newTab />
 
-      <AnonymizeDialog study={anonymizing} onClose={() => setAnonymizing(null)} />
+      <AnonymizeDialog
+        study={anonymizing}
+        onClose={() => setAnonymizing(null)}
+        onOpenFiles={onAddFiles}
+      />
       <StudyDetailsDialog study={describing} onClose={() => setDescribing(null)} />
+      <EditTagsDialog
+        study={editing}
+        onClose={() => setEditing(null)}
+        onOpenFiles={onAddFiles}
+      />
 
       <ConfirmDialog confirmation={confirmation} onClose={() => setConfirmation(null)} />
 
@@ -248,15 +323,22 @@ function StudyRow({
   onOpenSeries,
   onAnonymize,
   onShowDetails,
+  onEditTags,
+  copyKind,
+  onDownload,
   onRemove,
 }: {
   study: StudyInfo
+  copyKind: CopyKind | undefined
   expanded: boolean
   onToggle: () => void
   onOpenStudy: () => void
   onOpenSeries: (seriesUID: string) => void
   onAnonymize: () => void
   onShowDetails: () => void
+  onEditTags: () => void
+  /** Only for copies Kontrast made, which exist nowhere else. */
+  onDownload?: () => void
   onRemove: () => void
 }) {
   return (
@@ -272,14 +354,24 @@ function StudyRow({
           />
           {study.modality}
         </button>
-        <button
-          type="button"
-          onClick={onShowDetails}
-          title="Show study details"
-          className="truncate justify-self-start pr-3 text-left font-medium underline-offset-4 hover:underline"
-        >
-          {study.description}
-        </button>
+        <div className="flex min-w-0 items-center gap-2 pr-3">
+          <button
+            type="button"
+            onClick={onShowDetails}
+            title="Show study details"
+            className={cn(
+              'truncate text-left underline-offset-4 hover:underline',
+              study.description === NO_STUDY_DESCRIPTION ? 'text-muted-foreground' : 'font-medium',
+            )}
+          >
+            {study.description}
+          </button>
+          {copyKind && (
+            <span className="flex-none rounded-md border border-line-strong px-1.5 py-px text-[11px] text-muted-foreground">
+              {COPY_LABELS[copyKind]}
+            </span>
+          )}
+        </div>
         <span className="truncate text-muted-foreground">{study.patient}</span>
         <span className="font-mono text-[13px] text-muted-foreground">
           {study.date}
@@ -292,32 +384,43 @@ function StudyRow({
           {formatBytes(study.bytes)}
         </span>
         <div className="flex items-center gap-2 justify-self-end">
-          <Tooltip>
-            <TooltipTrigger asChild>
+          {/* Not modal, so the dialogs these items open get focus cleanly. */}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                onClick={onAnonymize}
-                aria-label="Anonymise and save as zip"
-                className="flex size-8 items-center justify-center rounded-md border border-line-strong text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Study actions"
+                className="flex size-8 items-center justify-center rounded-md border border-line-strong text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[state=open]:bg-secondary data-[state=open]:text-foreground"
               >
-                <VenetianMask className="size-4" />
+                <Ellipsis className="size-4" />
               </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Anonymise and save as zip</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onRemove}
-                aria-label="Remove from session"
-                className="flex size-8 items-center justify-center rounded-md border border-line-strong text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <ListX className="size-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Remove from session</TooltipContent>
-          </Tooltip>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-48">
+              <DropdownMenuItem onSelect={onShowDetails}>
+                <Info />
+                Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onAnonymize}>
+                <VenetianMask />
+                Anonymise…
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onEditTags}>
+                <FilePen />
+                Edit tags…
+              </DropdownMenuItem>
+              {onDownload && (
+                <DropdownMenuItem onSelect={onDownload}>
+                  <Download />
+                  Download zip
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={onRemove}>
+                <ListX />
+                Remove from session
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             type="button"
             onClick={onOpenStudy}

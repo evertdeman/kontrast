@@ -1,6 +1,7 @@
 /** Study/image metadata for the viewer, sourced from parsed DICOM header tags. */
 import { getImageTags } from '@/lib/cornerstone/loadDicom'
 import { SUMMARY_GROUPS, formatField } from '@/lib/dicom/summary'
+import { NO_STUDY_DESCRIPTION } from '@/lib/cornerstone/studies'
 
 export interface MetaField {
   label: string
@@ -31,7 +32,7 @@ export function getStudyHeader(imageId: string): StudyHeader {
   const t = getImageTags(imageId)
   return {
     modality: t?.modality || '—',
-    description: t?.studyDescription || t?.seriesDescription || 'Untitled study',
+    description: t?.studyDescription || NO_STUDY_DESCRIPTION,
     date: formatDate(t?.studyDate) ?? '—',
     patient: t?.patientName || 'Anonymous',
     seriesDescription: t?.seriesDescription || 'Series',
