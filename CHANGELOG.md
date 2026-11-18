@@ -1,3 +1,9 @@
+## [1.0.4](https://github.com/evertdeman/kontrast/compare/v1.0.3...v1.0.4) (2026-11-18)
+
+### Bug Fixes
+
+* unpack large zip archives without crashing the page ([3aab95f](https://github.com/evertdeman/kontrast/commit/3aab95fa1833a14e2f1757a9c4b790b5c1cd9fb1))
+
 ## [1.0.3](https://github.com/evertdeman/kontrast/compare/v1.0.2...v1.0.3) (2026-11-18)
 
 ### Bug Fixes
