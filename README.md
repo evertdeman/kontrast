@@ -6,7 +6,7 @@
 
 Kontrast is a DICOM viewer that runs entirely in your browser. Drop in a folder, a few files or a zip from a hospital CD or PACS export, scroll through the series, search every header tag, and anonymise a study before you share it. There is no server and no upload: your files never leave your computer.
 
-![Dropping a zip into Kontrast, scrolling through a CT, searching the header, anonymising the study and editing a tag for testing](docs/demo.gif)
+![Opening the sample brain MRI in Kontrast, scrolling through it, viewing its two series, searching the header, anonymising the study and editing a tag for testing](docs/demo.gif)
 
 > [!IMPORTANT]
 > **Kontrast is not a medical device.** It is a tool for opening and inspecting DICOM files for general, non-clinical purposes such as learning, curiosity and software development. Do not use it for diagnosis, treatment or any other medical decision. It is provided as is, without warranty.

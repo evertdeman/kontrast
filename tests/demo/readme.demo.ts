@@ -44,22 +44,10 @@ test('README demo', async ({ page }) => {
   await page.mouse.move(900, 650)
   await pause(1000)
 
-  // Drop a zip onto the page, through the app's own drop handler.
-  const dropZone = page.locator('main section').first()
-  const box = (await dropZone.boundingBox())!
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 25 })
-  const dataTransfer = await page.evaluateHandle(async () => {
-    const zip = await (await fetch('sample.zip')).blob()
-    const transfer = new DataTransfer()
-    transfer.items.add(new File([zip], 'brain MRI.zip', { type: 'application/zip' }))
-    return transfer
-  })
-  await dropZone.dispatchEvent('dragenter', { dataTransfer })
-  await dropZone.dispatchEvent('dragover', { dataTransfer })
-  await pause(900)
-  await dropZone.dispatchEvent('drop', { dataTransfer })
+  // Open the bundled sample study with one click.
+  await clickOn(page.getByRole('button', { name: 'Open a sample study' }))
   await page.getByRole('button', { name: 'Open', exact: true }).waitFor()
-  await pause(1200)
+  await pause(1400)
 
   // The study, with its series.
   await clickOn(page.getByRole('button', { name: 'MR', exact: true }))
