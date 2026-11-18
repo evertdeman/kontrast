@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Landing } from '@/components/Landing'
+import { Privacy } from '@/components/Privacy'
+import { PRIVACY_HASH } from '@/lib/site'
 import type { WorkspaceEntry } from '@/components/Workspace'
 
 // The viewer pulls in Cornerstone, dcmjs and the DICOM codecs — by far the
@@ -9,8 +11,20 @@ import type { WorkspaceEntry } from '@/components/Workspace'
 const importWorkspace = () => import('@/components/Workspace')
 const Workspace = lazy(importWorkspace)
 
+/** Whether the URL points at the privacy page. */
+function usePrivacyRoute(): boolean {
+  const [hash, setHash] = useState(() => window.location.hash)
+  useEffect(() => {
+    const update = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', update)
+    return () => window.removeEventListener('hashchange', update)
+  }, [])
+  return hash === PRIVACY_HASH
+}
+
 export default function App() {
   const [entry, setEntry] = useState<WorkspaceEntry | null>(null)
+  const showPrivacy = usePrivacyRoute()
 
   // Warm the viewer chunk in the background once the landing screen is idle, so
   // opening a study feels instant without weighing down first paint. Safe to
@@ -25,6 +39,10 @@ export default function App() {
     const timer = window.setTimeout(prefetch, 1500)
     return () => window.clearTimeout(timer)
   }, [entry])
+
+  // An open session always wins, so a stray hash change can't throw it away;
+  // links to the privacy page open in a new tab from there.
+  if (showPrivacy && !entry) return <Privacy />
 
   if (entry) {
     return (
