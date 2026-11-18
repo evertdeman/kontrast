@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import {
   Contrast,
   FileText,
@@ -11,16 +17,16 @@ import {
   Tags,
   Upload,
   Move,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Kbd } from '@/components/ui/kbd'
-import { BrandMark } from '@/components/brand/BrandMark'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { SiteFooter } from '@/components/SiteFooter'
-import { filesFromDataTransfer, toFiles } from '@/lib/files'
-import { ACTION_KEYS, TOOL_KEYS } from '@/lib/shortcuts'
-import { SITE } from '@/lib/site'
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import { BrandMark } from "@/components/brand/BrandMark";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { SiteFooter } from "@/components/SiteFooter";
+import { filesFromDataTransfer, toFiles } from "@/lib/files";
+import { ACTION_KEYS, TOOL_KEYS } from "@/lib/shortcuts";
+import { SITE } from "@/lib/site";
 
 function GithubIcon({ className }: { className?: string }) {
   return (
@@ -37,13 +43,13 @@ function GithubIcon({ className }: { className?: string }) {
       <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
       <path d="M9 18c-4.51 2-5-2-7-2" />
     </svg>
-  )
+  );
 }
 
 interface LandingProps {
-  onFiles: (files: File[]) => void
-  onSample: () => void | Promise<void>
-  loading?: boolean
+  onFiles: (files: File[]) => void;
+  onSample: () => void | Promise<void>;
+  loading?: boolean;
 }
 
 const MOCK_TOOLS: ComponentType<{ className?: string }>[] = [
@@ -52,68 +58,94 @@ const MOCK_TOOLS: ComponentType<{ className?: string }>[] = [
   Search,
   Layers,
   Ruler,
-]
+];
 
 /** Header groups shown in the empty inspector: [label, placeholder width]. */
 const MOCK_INSPECTOR: { title: string; fields: [string, string][] }[] = [
-  { title: 'Patient', fields: [['Name', '60%'], ['ID', '45%']] },
-  { title: 'Study', fields: [['Description', '75%'], ['Date', '40%'], ['Accession', '50%']] },
-  { title: 'Series', fields: [['Modality', '22%'], ['Body part', '35%']] },
-  { title: 'Image', fields: [['Matrix', '35%'], ['Spacing', '50%']] },
-]
+  {
+    title: "Patient",
+    fields: [
+      ["Name", "60%"],
+      ["ID", "45%"],
+    ],
+  },
+  {
+    title: "Study",
+    fields: [
+      ["Description", "75%"],
+      ["Date", "40%"],
+      ["Accession", "50%"],
+    ],
+  },
+  {
+    title: "Series",
+    fields: [
+      ["Modality", "22%"],
+      ["Body part", "35%"],
+    ],
+  },
+  {
+    title: "Image",
+    fields: [
+      ["Matrix", "35%"],
+      ["Spacing", "50%"],
+    ],
+  },
+];
 
 export function Landing({ onFiles, onSample, loading }: LandingProps) {
-  const fileInput = useRef<HTMLInputElement>(null)
-  const folderInput = useRef<HTMLInputElement>(null)
-  const [dragging, setDragging] = useState(false)
-  const [sampleLoading, setSampleLoading] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [sampleLoading, setSampleLoading] = useState(false);
   // dragenter/dragleave fire for every child element; count to know when the
   // pointer has really left the page.
-  const dragDepth = useRef(0)
+  const dragDepth = useRef(0);
 
-  const busy = loading || sampleLoading
+  const busy = loading || sampleLoading;
 
-  const isFileDrag = (e: React.DragEvent) => e.dataTransfer.types.includes('Files')
+  const isFileDrag = (e: React.DragEvent) =>
+    e.dataTransfer.types.includes("Files");
 
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
-      if (!isFileDrag(e)) return
-      e.preventDefault()
-      dragDepth.current = 0
-      setDragging(false)
-      if (busy) return
-      onFiles(await filesFromDataTransfer(e.dataTransfer))
+      if (!isFileDrag(e)) return;
+      e.preventDefault();
+      dragDepth.current = 0;
+      setDragging(false);
+      if (busy) return;
+      onFiles(await filesFromDataTransfer(e.dataTransfer));
     },
     [onFiles, busy],
-  )
+  );
 
   const handleSample = useCallback(async () => {
-    setSampleLoading(true)
+    setSampleLoading(true);
     try {
-      await onSample()
+      await onSample();
     } finally {
-      setSampleLoading(false)
+      setSampleLoading(false);
     }
-  }, [onSample])
+  }, [onSample]);
 
   return (
     <div
       className="flex min-h-full flex-col bg-background bg-dotgrid text-foreground"
       onDragEnter={(e) => {
-        if (!isFileDrag(e)) return
-        e.preventDefault()
-        dragDepth.current += 1
-        setDragging(true)
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        dragDepth.current += 1;
+        setDragging(true);
       }}
       onDragOver={(e) => {
-        if (!isFileDrag(e)) return
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'copy'
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
       }}
       onDragLeave={(e) => {
-        if (!isFileDrag(e)) return
-        dragDepth.current = Math.max(0, dragDepth.current - 1)
-        if (dragDepth.current === 0) setDragging(false)
+        if (!isFileDrag(e)) return;
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDragging(false);
       }}
       onDrop={handleDrop}
     >
@@ -122,7 +154,9 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
           <div className="flex items-center gap-2.5">
             <BrandMark />
-            <span className="text-base font-semibold tracking-tight">{SITE.name}</span>
+            <span className="text-base font-semibold tracking-tight">
+              {SITE.name}
+            </span>
             <span className="rounded-full border border-line-strong px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
               beta
             </span>
@@ -151,9 +185,8 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
             <span className="text-faint">Nothing leaves your device.</span>
           </h1>
           <p className="max-w-[600px] text-[17px] leading-[1.55] text-muted-foreground text-pretty">
-            Open DICOM files to scroll through CT, MR and X-ray series, zoom in,
-            adjust window and level, and search every header tag. Everything
-            runs on your own machine.
+            Open DICOM files to scroll through CT, MR and X-ray series and
+            search every header tag. Everything runs on your own machine.
           </p>
         </div>
 
@@ -161,8 +194,8 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
         <section
           aria-label="Open DICOM data"
           className={cn(
-            'w-full overflow-hidden rounded-2xl border bg-card shadow-[0_24px_64px_-24px_rgba(0,0,0,0.35)] transition-colors',
-            dragging ? 'border-primary' : 'border-line-strong',
+            "w-full overflow-hidden rounded-2xl border bg-card shadow-[0_24px_64px_-24px_rgba(0,0,0,0.35)] transition-colors",
+            dragging ? "border-primary" : "border-line-strong",
           )}
         >
           {/* Toolbar */}
@@ -207,16 +240,16 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
             <div className="flex flex-1 p-3">
               <div
                 className={cn(
-                  'flex flex-1 flex-col items-center justify-center gap-5 rounded-xl border-[1.5px] border-dashed px-6 py-10 text-center transition-colors',
+                  "flex flex-1 flex-col items-center justify-center gap-5 rounded-xl border-[1.5px] border-dashed px-6 py-10 text-center transition-colors",
                   dragging
-                    ? 'border-primary bg-accent/50'
-                    : 'border-line-strong bg-background/60',
+                    ? "border-primary bg-accent/50"
+                    : "border-line-strong bg-background/60",
                 )}
               >
                 <div
                   className={cn(
-                    'flex size-12 items-center justify-center rounded-xl border border-line-strong bg-elevated transition-transform',
-                    dragging && 'scale-110',
+                    "flex size-12 items-center justify-center rounded-xl border border-line-strong bg-elevated transition-transform",
+                    dragging && "scale-110",
                   )}
                 >
                   <Upload className="size-5" />
@@ -231,11 +264,15 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
                         Drop a DICOM folder anywhere on this page
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        CD and PACS exports, .zip archives, .dcm and extension-less files
+                        CD and PACS exports, .zip archives, .dcm and
+                        extension-less files
                       </div>
                     </div>
                     <div className="flex flex-wrap justify-center gap-2">
-                      <Button onClick={() => folderInput.current?.click()} disabled={busy}>
+                      <Button
+                        onClick={() => folderInput.current?.click()}
+                        disabled={busy}
+                      >
                         <FolderOpen className="size-4" />
                         Choose folder
                       </Button>
@@ -254,9 +291,13 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
                       disabled={busy}
                       className="flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:opacity-60"
                     >
-                      {sampleLoading && <Loader2 className="size-3.5 animate-spin" />}
-                      No scan handy?{' '}
-                      <span className="font-medium text-foreground">Open a sample study</span>
+                      {sampleLoading && (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      )}
+                      No scan handy?{" "}
+                      <span className="font-medium text-foreground">
+                        Open a sample study
+                      </span>
                     </button>
                   </>
                 )}
@@ -274,20 +315,28 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
                     {group.title}
                   </span>
                   {group.fields.map(([label, width]) => (
-                    <div key={label} className="flex items-center gap-3 text-xs text-faint">
+                    <div
+                      key={label}
+                      className="flex items-center gap-3 text-xs text-faint"
+                    >
                       <span className="w-[76px] flex-none">{label}</span>
-                      <div className="h-1.5 rounded bg-elevated" style={{ width }} />
+                      <div
+                        className="h-1.5 rounded bg-elevated"
+                        style={{ width }}
+                      />
                     </div>
                   ))}
                 </div>
               ))}
             </div>
           </div>
-
         </section>
 
         {/* What you can do */}
-        <section aria-labelledby="features" className="flex w-full flex-col gap-5">
+        <section
+          aria-labelledby="features"
+          className="flex w-full flex-col gap-5"
+        >
           <h2 id="features" className="sr-only">
             Features
           </h2>
@@ -302,7 +351,11 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
               icon={<Contrast className="size-5" />}
               title="Window / level"
               body="Drag to change brightness and contrast. Invert or reset in one key."
-              keys={[TOOL_KEYS.WindowLevel, ACTION_KEYS.invert, ACTION_KEYS.reset]}
+              keys={[
+                TOOL_KEYS.WindowLevel,
+                ACTION_KEYS.invert,
+                ACTION_KEYS.reset,
+              ]}
             />
             <FeatureCard
               icon={<Move className="size-5" />}
@@ -329,8 +382,8 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
         multiple
         className="hidden"
         onChange={(e) => {
-          onFiles(toFiles(e.target.files))
-          e.target.value = ''
+          onFiles(toFiles(e.target.files));
+          e.target.value = "";
         }}
       />
       <input
@@ -342,12 +395,12 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
         webkitdirectory=""
         directory=""
         onChange={(e) => {
-          onFiles(toFiles(e.target.files))
-          e.target.value = ''
+          onFiles(toFiles(e.target.files));
+          e.target.value = "";
         }}
       />
     </div>
-  )
+  );
 }
 
 function FeatureCard({
@@ -356,10 +409,10 @@ function FeatureCard({
   body,
   keys,
 }: {
-  icon: ReactNode
-  title: string
-  body: string
-  keys: readonly string[]
+  icon: ReactNode;
+  title: string;
+  body: string;
+  keys: readonly string[];
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-line-strong bg-card p-5">
@@ -378,5 +431,5 @@ function FeatureCard({
         <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
       </div>
     </div>
-  )
+  );
 }
