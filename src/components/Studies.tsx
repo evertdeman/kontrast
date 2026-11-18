@@ -11,19 +11,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog, type Confirmation } from '@/components/ConfirmDialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AnonymizeDialog } from '@/components/AnonymizeDialog'
 import { ProgressBar } from '@/components/ProgressBar'
 import { SeriesThumbnail } from '@/components/SeriesThumbnail'
+import { StudyDetailsDialog } from '@/components/StudyDetailsDialog'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { SITE } from '@/lib/site'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -59,10 +52,31 @@ export function Studies({
 }: StudiesProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [anonymizing, setAnonymizing] = useState<StudyInfo | null>(null)
-  const [confirmingClear, setConfirmingClear] = useState(false)
+  const [describing, setDescribing] = useState<StudyInfo | null>(null)
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+
   // Clearing throws away everything indexed so far, so ask first when there is something to lose.
-  const requestClear = () =>
-    studies.length > 0 || indexing ? setConfirmingClear(true) : onClearSession()
+  const requestClear = () => {
+    if (studies.length === 0 && !indexing) return onClearSession()
+    setConfirmation({
+      title: 'Clear all studies?',
+      description: `${
+        studies.length === 0
+          ? 'Indexing stops and nothing is kept.'
+          : `${studies.length === 1 ? 'The study' : `All ${studies.length} studies`} will be removed from Kontrast.`
+      } Your files are not changed, and you can open them again.`,
+      confirmLabel: 'Clear all',
+      onConfirm: onClearSession,
+    })
+  }
+
+  const requestRemove = (study: StudyInfo) =>
+    setConfirmation({
+      title: 'Remove this study?',
+      description: `“${study.description}” will be removed from Kontrast. Your files are not changed, and you can open them again.`,
+      confirmLabel: 'Remove',
+      onConfirm: () => onRemoveStudy(study),
+    })
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
 
@@ -176,7 +190,8 @@ export function Studies({
                   }
                   onOpenSeries={(seriesUID) => onOpenSeries(study.studyUID, seriesUID)}
                   onAnonymize={() => setAnonymizing(study)}
-                  onRemove={() => onRemoveStudy(study)}
+                  onShowDetails={() => setDescribing(study)}
+                  onRemove={() => requestRemove(study)}
                 />
               ))}
             </div>
@@ -193,28 +208,9 @@ export function Studies({
       <SiteFooter newTab />
 
       <AnonymizeDialog study={anonymizing} onClose={() => setAnonymizing(null)} />
+      <StudyDetailsDialog study={describing} onClose={() => setDescribing(null)} />
 
-      <Dialog open={confirmingClear} onOpenChange={setConfirmingClear}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Clear all studies?</DialogTitle>
-            <DialogDescription>
-              {studies.length === 0
-                ? 'Indexing stops and nothing is kept.'
-                : `${studies.length === 1 ? 'The study' : `All ${studies.length} studies`} will be removed from Kontrast.`}{' '}
-              Your files are not changed, and you can open them again.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="secondary">Cancel</Button>
-            </DialogClose>
-            <Button variant="destructive" onClick={onClearSession}>
-              Clear all
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog confirmation={confirmation} onClose={() => setConfirmation(null)} />
 
       {/* Hidden inputs — fully local, no upload */}
       <input
@@ -251,6 +247,7 @@ function StudyRow({
   onOpenStudy,
   onOpenSeries,
   onAnonymize,
+  onShowDetails,
   onRemove,
 }: {
   study: StudyInfo
@@ -259,6 +256,7 @@ function StudyRow({
   onOpenStudy: () => void
   onOpenSeries: (seriesUID: string) => void
   onAnonymize: () => void
+  onShowDetails: () => void
   onRemove: () => void
 }) {
   return (
@@ -274,7 +272,14 @@ function StudyRow({
           />
           {study.modality}
         </button>
-        <span className="truncate pr-3 font-medium">{study.description}</span>
+        <button
+          type="button"
+          onClick={onShowDetails}
+          title="Show study details"
+          className="truncate justify-self-start pr-3 text-left font-medium underline-offset-4 hover:underline"
+        >
+          {study.description}
+        </button>
         <span className="truncate text-muted-foreground">{study.patient}</span>
         <span className="font-mono text-[13px] text-muted-foreground">
           {study.date}
