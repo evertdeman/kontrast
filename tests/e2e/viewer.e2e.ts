@@ -2,6 +2,7 @@ import {
   canvasHasContent,
   dragImage,
   expect,
+  openFiles,
   openSample,
   openViewer,
   sliceCounter,
@@ -10,6 +11,14 @@ import {
   viewport,
   windowLevel,
 } from './fixtures'
+import { ctHeadZip, tempDir } from './data'
+
+/** From the viewer, go back to the studies list, add a CT head and open it. */
+async function openCtHead(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Studies' }).click()
+  await openFiles(page, [ctHeadZip(tempDir())])
+  await openViewer(page, studyRow(page, 'Phantom CT'))
+}
 
 const tool = (page: import('@playwright/test').Page, name: string) =>
   page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name, exact: true })
@@ -43,18 +52,20 @@ test('the left mouse button follows the toolbar after reopening the viewer', asy
 test('rapid series switching ends on the first slice of the chosen series', async ({ page }) => {
   const rail = page.getByRole('complementary', { name: 'Series' })
   for (let i = 0; i < 3; i++) {
-    await rail.getByRole('button', { name: /Coronal/ }).click()
-    await rail.getByRole('button', { name: /Axial/ }).click()
+    await rail.getByRole('button', { name: /FLAIR/ }).click()
+    await rail.getByRole('button', { name: /T1/ }).click()
   }
-  await expect(sliceCounter(page)).toHaveText('1 / 48')
+  await expect(sliceCounter(page)).toHaveText('1 / 39')
 })
 
 test('CT presets apply by key and from the menu, and stay while scrolling', async ({ page }) => {
+  await openCtHead(page)
+
   await page.keyboard.press('2')
   await expect.poll(() => windowLevel(page)).toBe('W 1500 L -600')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowDown')
-  await expect(sliceCounter(page)).toHaveText('3 / 48')
+  await expect(sliceCounter(page)).toHaveText('3 / 6')
   await expect.poll(() => windowLevel(page)).toBe('W 1500 L -600')
 
   await page.getByRole('button', { name: 'Presets' }).click()
@@ -63,6 +74,8 @@ test('CT presets apply by key and from the menu, and stay while scrolling', asyn
 })
 
 test('the elliptical region shows Hounsfield statistics', async ({ page }) => {
+  await openCtHead(page)
+
   await page.keyboard.press('a')
   await expect(tool(page, 'Angle measurement')).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.press('e')
@@ -75,6 +88,9 @@ test('the elliptical region shows Hounsfield statistics', async ({ page }) => {
 })
 
 test('every toolbar button shows a tooltip with its shortcut', async ({ page }) => {
+  // Use a CT study so the full toolbar (including the CT window presets) is present.
+  await openCtHead(page)
+
   const toolbar = page.getByRole('toolbar', { name: 'Tools' })
   const buttons = await toolbar.getByRole('button').all()
   expect(buttons.length).toBeGreaterThanOrEqual(12)
@@ -94,7 +110,7 @@ test('every toolbar button shows a tooltip with its shortcut', async ({ page }) 
 test('C saves a screenshot', async ({ page }) => {
   const download = page.waitForEvent('download')
   await page.keyboard.press('c')
-  expect((await download).suggestedFilename()).toMatch(/^kontrast-CT-\d+\.png$/)
+  expect((await download).suggestedFilename()).toMatch(/^kontrast-MR-\d+\.png$/)
 })
 
 test('the header panel keeps UIDs on one line with a copy button, and text in the sans font', async ({ page }) => {
@@ -105,7 +121,7 @@ test('the header panel keeps UIDs on one line with a copy button, and text in th
   const lineHeight = await uidText.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight))
   expect((await uidText.boundingBox())!.height).toBeLessThanOrEqual(lineHeight + 1)
 
-  const description = panel.locator('dd', { hasText: 'synthetic head phantom' })
+  const description = panel.locator('dd', { hasText: 'simulated brain MRI' })
   const font = await description.evaluate((el) => getComputedStyle(el).fontFamily)
   expect(font).not.toMatch(/mono/i)
   expect(await description.innerText()).not.toMatch(/he\s+ad/)

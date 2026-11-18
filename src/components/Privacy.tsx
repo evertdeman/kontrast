@@ -87,7 +87,10 @@ export function Privacy() {
         <Section title="What is sent over the network">
           <ul>
             <li>The app itself, loaded from GitHub Pages.</li>
-            <li>The sample study, only if you open it. It is a synthetic scan, not a real patient.</li>
+            <li>
+              The sample study, only if you open it. It is a simulated brain MRI built from an
+              averaged anatomical template, not a real patient.
+            </li>
           </ul>
           <p>
             Nothing else. Fonts are part of the app, and no other services are contacted. The

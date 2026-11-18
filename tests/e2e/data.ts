@@ -64,6 +64,49 @@ export function largeCtZip(dir: string, count: number): string {
   return file
 }
 
+/**
+ * A small axial CT head, for the CT-only viewer features (window presets and
+ * Hounsfield statistics) that the MR sample study cannot exercise. A disk of
+ * soft tissue (~40 HU) inside a thin bone ring (~1000 HU), on air.
+ */
+export function ctHeadZip(dir: string, count = 6): string {
+  const studyUID = '1.2.826.0.1.3680043.99.555'
+  const seriesUID = `${studyUID}.1`
+  const entries: Record<string, Uint8Array> = {}
+  for (let i = 0; i < count; i++) {
+    entries[`ct/IM${String(i).padStart(4, '0')}.dcm`] = buildDicom({
+      '00080016': ['UI', CT_IMAGE_STORAGE],
+      '00080018': ['UI', `${seriesUID}.${i + 1}`],
+      '00080020': ['DA', '20240201'],
+      '00080060': ['CS', 'CT'],
+      '00081030': ['LO', 'CT head'],
+      '0008103E': ['LO', 'Axial'],
+      '00100010': ['PN', 'Phantom^CT'],
+      '00100020': ['LO', 'CT-FIXTURE'],
+      '0020000D': ['UI', studyUID],
+      '0020000E': ['UI', seriesUID],
+      '00200011': ['IS', '1'],
+      '00200013': ['IS', String(i + 1)],
+      '00200032': ['DS', `-64\\-64\\${i * 5}`],
+      '00200037': ['DS', '1\\0\\0\\0\\1\\0'],
+      '00180050': ['DS', '5'],
+      '00280030': ['DS', '1\\1'],
+      '00281052': ['DS', '-1024'], // RescaleIntercept
+      '00281053': ['DS', '1'], // RescaleSlope
+      '00281054': ['LO', 'HU'], // RescaleType
+      ...imagePixels(128, (x, y) => {
+        const r = Math.hypot(x - 64, y - 64)
+        if (r < 50) return 1064 // soft tissue, ~40 HU
+        if (r < 56) return 2024 // bone ring, ~1000 HU
+        return 0 // air
+      }),
+    })
+  }
+  const file = path.join(dir, 'ct-head.zip')
+  writeFileSync(file, zipSync(entries, { level: 6 }))
+  return file
+}
+
 /** A square 16-bit monochrome image, as dataset elements. */
 function imagePixels(size: number, value: (x: number, y: number) => number): DicomDataset {
   const pixels = new Uint8Array(size * size * 2)

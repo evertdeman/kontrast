@@ -44,25 +44,13 @@ test('README demo', async ({ page }) => {
   await page.mouse.move(900, 650)
   await pause(1000)
 
-  // Drop a zip onto the page, through the app's own drop handler.
-  const dropZone = page.locator('main section').first()
-  const box = (await dropZone.boundingBox())!
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 25 })
-  const dataTransfer = await page.evaluateHandle(async () => {
-    const zip = await (await fetch('sample.zip')).blob()
-    const transfer = new DataTransfer()
-    transfer.items.add(new File([zip], 'CT head.zip', { type: 'application/zip' }))
-    return transfer
-  })
-  await dropZone.dispatchEvent('dragenter', { dataTransfer })
-  await dropZone.dispatchEvent('dragover', { dataTransfer })
-  await pause(900)
-  await dropZone.dispatchEvent('drop', { dataTransfer })
+  // Open the bundled sample study with one click.
+  await clickOn(page.getByRole('button', { name: 'Open a sample study' }))
   await page.getByRole('button', { name: 'Open', exact: true }).waitFor()
-  await pause(1200)
+  await pause(1400)
 
   // The study, with its series.
-  await clickOn(page.getByRole('button', { name: 'CT', exact: true }))
+  await clickOn(page.getByRole('button', { name: 'MR', exact: true }))
   await pause(1400)
 
   // Scroll through the slices and try a window preset.
@@ -76,9 +64,11 @@ test('README demo', async ({ page }) => {
     await pause(70)
   }
   await pause(600)
-  await page.keyboard.press('2')
-  await pause(800)
-  await page.keyboard.press('4')
+  // Switch to the second series (FLAIR) to show the two-series study, then back.
+  const rail = page.getByRole('complementary', { name: 'Series' })
+  await clickOn(rail.getByRole('button', { name: /FLAIR/ }))
+  await pause(1300)
+  await clickOn(rail.getByRole('button', { name: /T1/ }))
   await pause(1000)
 
   // Search the full header.
@@ -103,7 +93,7 @@ test('README demo', async ({ page }) => {
   await pause(1200)
 
   // Edit a tag for testing, and open the edited copy too.
-  const original = page.locator('main .grid').filter({ hasText: 'Phantom Lumen' }).filter({ has: page.getByTitle('Show study details') })
+  const original = page.locator('main .grid').filter({ hasText: 'Kontrast Sample' }).filter({ has: page.getByTitle('Show study details') })
   await clickOn(original.getByRole('button', { name: 'Study actions' }))
   await pause(600)
   await clickOn(page.getByRole('menuitem', { name: 'Edit tags…' }))
