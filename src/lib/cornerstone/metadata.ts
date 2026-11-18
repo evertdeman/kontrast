@@ -6,6 +6,8 @@ import { NO_STUDY_DESCRIPTION } from '@/lib/cornerstone/studies'
 export interface MetaField {
   label: string
   value: string
+  /** A UID: long, unbroken digits, shown on one line with a copy button. */
+  uid?: boolean
 }
 
 export interface MetaGroup {
@@ -51,6 +53,7 @@ export function getImageMetadata(imageId: string): MetaGroup[] {
       .map((f) => ({
         label: f.label,
         value: formatField(summary[f.keyword], f.format, f.unit),
+        ...(f.keyword.endsWith('UID') && { uid: true }),
       })),
   })).filter((g) => g.fields.length > 0)
 }

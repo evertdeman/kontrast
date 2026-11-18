@@ -14,6 +14,7 @@ export const TOOL_KEYS: Record<PrimaryTool, string> = {
 export const ACTION_KEYS = {
   invert: 'I',
   reset: 'R',
+  screenshot: 'C',
   header: 'H',
   panel: 'T',
   play: 'Space',

@@ -73,3 +73,40 @@ test('the elliptical region shows Hounsfield statistics', async ({ page }) => {
   const annotation = viewport(page).locator('svg text')
   await expect(annotation.filter({ hasText: /Mean: .* HU/ })).toHaveCount(1)
 })
+
+test('every toolbar button shows a tooltip with its shortcut', async ({ page }) => {
+  const toolbar = page.getByRole('toolbar', { name: 'Tools' })
+  const buttons = await toolbar.getByRole('button').all()
+  expect(buttons.length).toBeGreaterThanOrEqual(12)
+  for (const button of buttons) {
+    const name = (await button.getAttribute('aria-label')) ?? (await button.innerText())
+    await button.hover()
+    const tooltip = page.getByRole('tooltip')
+    await expect(tooltip, name).toBeVisible()
+    await expect(tooltip.locator('kbd'), name).toHaveCount(1)
+    // Move away like a real pointer, through the space below the toolbar.
+    const box = (await button.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + 150, { steps: 5 })
+    await expect(tooltip, `${name} closes`).toHaveCount(0)
+  }
+})
+
+test('C saves a screenshot', async ({ page }) => {
+  const download = page.waitForEvent('download')
+  await page.keyboard.press('c')
+  expect((await download).suggestedFilename()).toMatch(/^kontrast-CT-\d+\.png$/)
+})
+
+test('the header panel keeps UIDs on one line with a copy button, and text in the sans font', async ({ page }) => {
+  const panel = page.getByRole('complementary', { name: 'Inspector' })
+  const uid = panel.locator('dd').filter({ has: page.getByRole('button', { name: 'Copy Study UID' }) })
+  await expect(uid).toHaveCount(1)
+  const uidText = uid.locator('span').first()
+  const lineHeight = await uidText.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight))
+  expect((await uidText.boundingBox())!.height).toBeLessThanOrEqual(lineHeight + 1)
+
+  const description = panel.locator('dd', { hasText: 'synthetic head phantom' })
+  const font = await description.evaluate((el) => getComputedStyle(el).fontFamily)
+  expect(font).not.toMatch(/mono/i)
+  expect(await description.innerText()).not.toMatch(/he\s+ad/)
+})
