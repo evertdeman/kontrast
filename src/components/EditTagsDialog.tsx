@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ProgressBar } from '@/components/ProgressBar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { studyFiles } from '@/lib/cornerstone/studyFiles'
 import type { StudyInfo } from '@/lib/cornerstone/studies'
@@ -52,6 +53,11 @@ const newRule = (id: number): Rule => ({ id, input: '', action: 'set', value: ''
 
 
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`
+
+/** Select values can't be empty, so "all series" needs a value of its own. */
+const ALL_SERIES = '__all__'
+
+const selectClass = 'h-8 border-line-strong px-2.5 text-[13px]'
 
 const fieldClass =
   'h-8 rounded-md border border-line-strong bg-transparent px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
@@ -232,15 +238,18 @@ export function EditTagsDialog({ study: requested, onClose, onOpenFiles }: EditT
                   onChange={(e) => update(rule.id, { input: e.target.value })}
                   className={cn(fieldClass, 'min-w-48 flex-[2]')}
                 />
-                <select
-                  aria-label="Action"
+                <Select
                   value={rule.action}
-                  onChange={(e) => update(rule.id, { action: e.target.value as Rule['action'] })}
-                  className={fieldClass}
+                  onValueChange={(action) => update(rule.id, { action: action as Rule['action'] })}
                 >
-                  <option value="set">Set to</option>
-                  <option value="remove">Remove</option>
-                </select>
+                  <SelectTrigger aria-label="Action" className={selectClass}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="set">Set to</SelectItem>
+                    <SelectItem value="remove">Remove</SelectItem>
+                  </SelectContent>
+                </Select>
                 <input
                   aria-label="New value"
                   placeholder={rule.action === 'remove' ? '' : 'New value (empty for none)'}
@@ -249,20 +258,23 @@ export function EditTagsDialog({ study: requested, onClose, onOpenFiles }: EditT
                   onChange={(e) => update(rule.id, { value: e.target.value })}
                   className={cn(fieldClass, 'min-w-40 flex-[2] font-mono')}
                 />
-                <select
-                  aria-label="Series"
-                  value={rule.seriesUID ?? ''}
-                  onChange={(e) => update(rule.id, { seriesUID: e.target.value || null })}
-                  className={cn(fieldClass, 'max-w-48')}
+                <Select
+                  value={rule.seriesUID ?? ALL_SERIES}
+                  onValueChange={(uid) => update(rule.id, { seriesUID: uid === ALL_SERIES ? null : uid })}
                 >
-                  <option value="">All series</option>
-                  {study?.series.map((s) => (
-                    <option key={s.seriesUID} value={s.seriesUID}>
-                      {s.seriesNumber != null ? `#${s.seriesNumber} ` : ''}
-                      {s.description}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger aria-label="Series" className={cn(selectClass, 'max-w-48')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_SERIES}>All series</SelectItem>
+                    {study?.series.map((s) => (
+                      <SelectItem key={s.seriesUID} value={s.seriesUID}>
+                        {s.seriesNumber != null ? `#${s.seriesNumber} ` : ''}
+                        {s.description}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <button
                   type="button"
                   aria-label="Remove change"

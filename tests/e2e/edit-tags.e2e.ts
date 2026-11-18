@@ -17,15 +17,20 @@ const dialog = (page: Page) => page.getByRole('dialog')
 const changes = (page: Page) => dialog(page).locator('fieldset > div').filter({ has: page.getByLabel('Tag') })
 const saveButton = (page: Page) => dialog(page).getByRole('button', { name: /Save zip|Open copy/ })
 
+async function choose(page: Page, change: Locator, select: string, option: string) {
+  await change.getByRole('combobox', { name: select }).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
+
 async function addChange(page: Page, tag: string, value: string, options: { action?: string; series?: string } = {}) {
   if ((await changes(page).last().getByLabel('Tag').inputValue()) !== '') {
     await dialog(page).getByRole('button', { name: 'Add change' }).click()
   }
   const change: Locator = changes(page).last()
   await change.getByLabel('Tag').fill(tag)
-  if (options.action) await change.getByLabel('Action').selectOption({ label: options.action })
+  if (options.action) await choose(page, change, 'Action', options.action)
   if (value) await change.getByLabel('New value').fill(value)
-  if (options.series) await change.getByLabel('Series').selectOption({ label: options.series })
+  if (options.series) await choose(page, change, 'Series', options.series)
   return change
 }
 
