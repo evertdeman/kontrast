@@ -10,8 +10,10 @@ synthesises two co-registered axial series with realistic contrast:
                    little brighter than white matter).
 
 Rician noise and a smooth bias field are added so the result reads like a
-single acquisition rather than a smooth average. Output is RLE-compressed
-DICOM, zipped to public/sample.zip.
+single acquisition rather than a smooth average. Output is DICOM compressed
+with JPEG 2000 at a gentle 10:1 ratio -- visually identical to lossless but
+far smaller, since the noise texture makes lossless coding expensive -- and
+zipped to public/sample.zip.
 
 The ICBM152 template is used under its permissive licence (see the copyright
 notice in COPYRIGHT below), which allows use, modification and redistribution
@@ -22,7 +24,7 @@ every generated file (DerivationDescription) and credited in the README.
     #   https://nist.mni.mcgill.ca/icbm-152-nonlinear-atlases-2009/
     python scripts/generate_sample.py path/to/mni_icbm152_nlin_sym_09a
 
-Requires: numpy, scipy, pydicom, nibabel.
+Requires: numpy, scipy, pydicom, nibabel, pylibjpeg-openjpeg.
 """
 
 import sys
@@ -38,12 +40,13 @@ from pydicom.dataset import Dataset, FileMetaDataset
 from pydicom.encaps import encapsulate
 from pydicom.uid import (
     MRImageStorage,
-    JPEG2000Lossless,
+    JPEG2000,
     generate_uid,
 )
 
 OUT = Path(__file__).resolve().parent.parent / "public" / "sample.zip"
 SLICE_MM = 4.0  # axial slice spacing of the output series
+LOSSY_RATIO = 10  # JPEG 2000 compression ratio (visually identical here)
 MARGIN = 10  # voxels of head kept around the brain, in plane
 
 COPYRIGHT = (
@@ -148,7 +151,7 @@ def write_series(out, data, vol, study, number, description, seq, start, picks):
 
         ds = Dataset()
         ds.file_meta = FileMetaDataset()
-        ds.file_meta.TransferSyntaxUID = JPEG2000Lossless
+        ds.file_meta.TransferSyntaxUID = JPEG2000
         ds.file_meta.MediaStorageSOPClassUID = MRImageStorage
         sop_uid = generate_uid(entropy_srcs=[series_uid, str(i)])
         ds.file_meta.MediaStorageSOPInstanceUID = sop_uid
@@ -196,9 +199,17 @@ def write_series(out, data, vol, study, number, description, seq, start, picks):
         ds.PixelRepresentation = 0
         ds.WindowCenter = 500
         ds.WindowWidth = 900
+        ds.LossyImageCompression = "01"
+        ds.LossyImageCompressionRatio = LOSSY_RATIO
+        ds.LossyImageCompressionMethod = "ISO_15444_1"
 
-        # JPEG 2000 lossless (encoded directly; encapsulated into the dataset).
-        frame = j2k_encode(np.ascontiguousarray(stored), bits_stored=12, use_mct=False)
+        # JPEG 2000 at LOSSY_RATIO:1 (encoded directly; encapsulated into the dataset).
+        frame = j2k_encode(
+            np.ascontiguousarray(stored),
+            bits_stored=12,
+            use_mct=False,
+            compression_ratios=[LOSSY_RATIO],
+        )
         ds.PixelData = encapsulate([frame])
         ds["PixelData"].is_undefined_length = True
         name = f"IM{start + i:04d}.dcm"
