@@ -131,11 +131,9 @@ describe('createAnonymizer', () => {
     expect(value(item, '00100020') ?? '').toBe('')
   })
 
-  test('removes all dates and times by default', () => {
-    for (const tag of ['00080020', '00080030', '0008002A', '00100030']) {
-      expect(isEmpty(tag), tag).toBe(true)
-    }
-    expect(value(dict, '00280303')).toBe('REMOVED')
+  test('shifts dates by default', () => {
+    expect(value(dict, '00080020')).toMatch(/^\d{8}$/)
+    expect(value(dict, '00280303')).toBe('MODIFIED')
   })
 
   test('keeps attributes needed to show the image', () => {
@@ -160,8 +158,14 @@ describe('createAnonymizer', () => {
 
   test('records that the patient identity was removed and how', () => {
     expect(value(dict, '00120062')).toBe('YES')
-    expect(dict['00120063'].Value).toEqual(['Basic Application Confidentiality Profile'])
-    expect(items(dict, '00120064').map((code) => value(code, '00080100'))).toEqual(['113100'])
+    expect(dict['00120063'].Value).toEqual([
+      'Basic Application Confidentiality Profile',
+      'Retain Longitudinal Temporal Information Modified Dates Option',
+    ])
+    expect(items(dict, '00120064').map((code) => value(code, '00080100'))).toEqual([
+      '113100',
+      '113107',
+    ])
   })
 
   test('removes public attributes it does not know', () => {
@@ -210,6 +214,15 @@ describe('createAnonymizer', () => {
 })
 
 describe('options', () => {
+  test('can remove all dates and times', () => {
+    const { dict, isEmpty } = anonymizeOne({ dates: 'remove' })
+    for (const tag of ['00080020', '00080030', '0008002A', '00100030']) {
+      expect(isEmpty(tag), tag).toBe(true)
+    }
+    expect(value(dict, '00280303')).toBe('REMOVED')
+    expect(items(dict, '00120064').map((code) => value(code, '00080100'))).toEqual(['113100'])
+  })
+
   test('shifting moves every date by the same number of days and keeps times', () => {
     const { dict } = anonymizeOne({ dates: 'shift', dateOffsetDays: -10 })
     expect(value(dict, '00080020')).toBe('20240121')
@@ -224,7 +237,7 @@ describe('options', () => {
   })
 
   test('shifts by a random number of days when no offset is given', () => {
-    const { dict } = anonymizeOne({ dates: 'shift' })
+    const { dict } = anonymizeOne()
     const studyDate = String(value(dict, '00080020'))
     expect(studyDate).toMatch(/^\d{8}$/)
     expect(studyDate).not.toBe('20240131')
@@ -238,7 +251,12 @@ describe('options', () => {
   })
 
   test('can keep the age, sex, height and weight', () => {
-    const { dict } = anonymizeOne({ keepAge: true, keepSex: true, keepSizeAndWeight: true })
+    const { dict } = anonymizeOne({
+      dates: 'remove',
+      keepAge: true,
+      keepSex: true,
+      keepSizeAndWeight: true,
+    })
     expect(value(dict, '00101010')).toBe('044Y')
     expect(value(dict, '00100040')).toBe('F')
     expect(value(dict, '00101020')).toBe(1.7)

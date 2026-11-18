@@ -29,7 +29,7 @@ export interface AnonymizeOptions {
 }
 
 export const DEFAULT_OPTIONS: AnonymizeOptions = {
-  dates: 'remove',
+  dates: 'shift',
   keepAge: false,
   keepSex: false,
   keepSizeAndWeight: false,
