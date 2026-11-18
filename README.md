@@ -179,8 +179,14 @@ Code contributions are not accepted at the moment: all code is written by the au
 
 ## Licence
 
-Kontrast is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+Kontrast is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE), with one added permission.
 
-In plain words: you may use, copy, modify and share it for any **non-commercial** purpose, such as personal use, study, research, teaching, or use by charities and public institutions. **Commercial use requires a separate licence from the author.** This summary is for convenience only; the [licence text](LICENSE) is what applies.
+In plain words:
+
+- **Running the app is free for everyone, including commercial use.** Open scans in the [hosted version](https://evertdeman.github.io/kontrast/) or in a copy you run yourself, for any purpose, including paid work.
+- **Copying the code is free for non-commercial purposes** — personal use, study, research, teaching, or use by charities and public institutions. You may copy, modify and share the source.
+- **Copying, modifying or redistributing the code for commercial gain requires a separate licence from the author.**
+
+This summary is for convenience only; the [licence text](LICENSE) is what applies.
 
 Third-party libraries are used under their own licences.
