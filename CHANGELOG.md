@@ -1,3 +1,14 @@
+# [1.4.0](https://github.com/evertdeman/kontrast/compare/v1.3.1...v1.4.0) (2026-11-18)
+
+### Bug Fixes
+
+* use styled selects in the tag editor ([a0bd79a](https://github.com/evertdeman/kontrast/commit/a0bd79a54826d993e00c39344edacce5ba9f5465))
+
+### Features
+
+* edit tags for testing, and open or download copies made in Kontrast ([49144f8](https://github.com/evertdeman/kontrast/commit/49144f8ca7ddd3fb61f1b40c6286fbe05303b2fd))
+* **landing:** show what the app does in the feature cards ([49897db](https://github.com/evertdeman/kontrast/commit/49897db7e71872e92d19e8c544792e6512d0ea1d))
+
 ## [1.3.1](https://github.com/evertdeman/kontrast/compare/v1.3.0...v1.3.1) (2026-11-18)
 
 ### Bug Fixes
