@@ -1,5 +1,5 @@
 /** DICOM files generated for the end-to-end tests. */
-import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { zipSync } from 'fflate'
@@ -7,9 +7,7 @@ import { buildDicom, type DicomDataset } from '../../src/test/buildDicom'
 
 const CT_IMAGE_STORAGE = '1.2.840.10008.5.1.4.1.1.2'
 
-export const SAMPLE_FILES = readdirSync('public/sample')
-  .filter((f) => f.endsWith('.dcm'))
-  .map((f) => path.resolve('public/sample', f))
+export const SAMPLE_ZIP = path.resolve('public/sample.zip')
 
 export function tempDir(): string {
   return mkdtempSync(path.join(tmpdir(), 'kontrast-e2e-'))

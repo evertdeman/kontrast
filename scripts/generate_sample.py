@@ -1,13 +1,14 @@
 """Generate the bundled sample study: a synthetic CT head phantom.
 
-Writes RLE-compressed DICOM files plus a manifest to public/sample/. The data is
+Writes RLE-compressed DICOM files, zipped, to public/sample.zip. The data is
 entirely synthetic (3D Shepp-Logan-style ellipsoids in Hounsfield units), so it
 carries no patient information and no third-party licence.
 
     python scripts/generate_sample.py
 """
 
-import json
+import tempfile
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +20,7 @@ from pydicom.uid import (
     generate_uid,
 )
 
-OUT = Path(__file__).resolve().parent.parent / "public" / "sample"
+OUT = Path(__file__).resolve().parent.parent / "public" / "sample.zip"
 SIZE = 192  # isotropic volume, voxels per side
 SLICES = 48  # slices per series
 FOV_MM = 220.0
@@ -53,7 +54,7 @@ def phantom(n: int) -> np.ndarray:
     return np.clip(vol, -1024, 3071)
 
 
-def write_series(vol, study, series_number, description, plane, start_index):
+def write_series(out, vol, study, series_number, description, plane, start_index):
     spacing = FOV_MM / SIZE
     series_uid = generate_uid(entropy_srcs=[study["uid"], description])
     picks = np.linspace(SIZE * 0.12, SIZE * 0.88, SLICES).astype(int)
@@ -118,25 +119,26 @@ def write_series(vol, study, series_number, description, plane, start_index):
 
         ds.compress(RLELossless, stored)
         name = f"IM{start_index + i:04d}.dcm"
-        ds.save_as(OUT / name, write_like_original=False)
+        ds.save_as(out / name, write_like_original=False)
         names.append(name)
     return names
 
 
 def main():
-    OUT.mkdir(parents=True, exist_ok=True)
-    for old in OUT.glob("*.dcm"):
-        old.unlink()
     vol = phantom(SIZE)
     study = {
         "uid": generate_uid(entropy_srcs=["lumen-sample-study"]),
         "for": generate_uid(entropy_srcs=["lumen-sample-for"]),
     }
-    files = write_series(vol, study, 1, "Axial", "axial", 0)
-    files += write_series(vol, study, 2, "Coronal", "coronal", len(files))
-    (OUT / "manifest.json").write_text(json.dumps({"files": files}, indent=2) + "\n")
-    total = sum((OUT / f).stat().st_size for f in files)
-    print(f"Wrote {len(files)} files ({total / 1e6:.1f} MB) to {OUT}")
+    # One zip loads in a single request; the app unpacks it like any other zip.
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        files = write_series(out, vol, study, 1, "Axial", "axial", 0)
+        files += write_series(out, vol, study, 2, "Coronal", "coronal", len(files))
+        with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name in files:
+                zf.write(out / name, f"sample/{name}")
+    print(f"Wrote {len(files)} files ({OUT.stat().st_size / 1e6:.1f} MB zipped) to {OUT}")
 
 
 if __name__ == "__main__":

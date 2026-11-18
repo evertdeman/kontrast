@@ -84,7 +84,7 @@ The production build is a static site, so it can be served from any static host.
 
 ### Sample study
 
-The sample study in `public/sample/` is a synthetic CT head phantom made of simple shapes. It contains no patient data. To regenerate it you need Python with `numpy` and `pydicom`:
+The sample study in `public/sample.zip` is a synthetic CT head phantom made of simple shapes. It contains no patient data. To regenerate it you need Python with `numpy` and `pydicom`:
 
 ```bash
 python scripts/generate_sample.py
@@ -121,7 +121,7 @@ src/
     files.ts          file pickers, drag and drop, zip unpacking
   test/               test helpers (an in-memory DICOM writer)
 scripts/              sample study generator
-public/sample/        bundled synthetic sample study
+public/sample.zip     bundled synthetic sample study
 ```
 
 ## Releases
