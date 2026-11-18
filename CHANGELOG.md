@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/evertdeman/kontrast/compare/v1.0.4...v1.1.0) (2026-11-18)
+
+### Bug Fixes
+
+* **anonymise:** say what the anonymisation does not cover ([d3b3b44](https://github.com/evertdeman/kontrast/commit/d3b3b447c0a76503f591a08af487ee66a9a3b436))
+
+### Features
+
+* anonymise a study and save it as a zip ([be3340e](https://github.com/evertdeman/kontrast/commit/be3340e4c07ceec93897392c1b7ba6efc1e1a5b9))
+* follow the profile table and add options to keep dates and patient details ([0090b21](https://github.com/evertdeman/kontrast/commit/0090b21bf5300378880437731d812495b78307b2))
+* shift dates by default when anonymising ([1e7a911](https://github.com/evertdeman/kontrast/commit/1e7a911cedfa7a827d48cd085f29b59d5195d36f))
+
 ## [1.0.4](https://github.com/evertdeman/kontrast/compare/v1.0.3...v1.0.4) (2026-11-18)
 
 ### Bug Fixes
