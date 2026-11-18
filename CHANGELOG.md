@@ -1,3 +1,9 @@
+# [1.3.0](https://github.com/evertdeman/kontrast/compare/v1.2.0...v1.3.0) (2026-11-18)
+
+### Features
+
+* show study details, and confirm before removing a study or leaving ([dc6d424](https://github.com/evertdeman/kontrast/commit/dc6d424ca81cb734e9ebab46bbfaf22781a7fc22))
+
 # [1.2.0](https://github.com/evertdeman/kontrast/compare/v1.1.0...v1.2.0) (2026-11-18)
 
 ### Features
