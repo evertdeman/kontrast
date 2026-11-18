@@ -1,3 +1,13 @@
+# [1.6.0](https://github.com/evertdeman/kontrast/compare/v1.5.0...v1.6.0) (2026-11-18)
+
+### Features
+
+* **sample:** replace CT phantom with a simulated brain MRI ([8c0a24f](https://github.com/evertdeman/kontrast/commit/8c0a24fe3e79a37078af93f5955a4c292bf2bf6d))
+
+### Performance Improvements
+
+* **sample:** compress the sample with lossy JPEG 2000 ([89c0cd9](https://github.com/evertdeman/kontrast/commit/89c0cd9f6659f5adcde58376b767ad3224829474))
+
 # [1.5.0](https://github.com/evertdeman/kontrast/compare/v1.4.0...v1.5.0) (2026-11-18)
 
 ### Features
