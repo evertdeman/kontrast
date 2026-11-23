@@ -17,6 +17,7 @@ import {
   AngleTool,
   EllipticalROITool,
 } from '@cornerstonejs/tools'
+import { registerNiftiImageLoader } from '@/lib/cornerstone/loadNifti'
 
 let initialized = false
 let initPromise: Promise<void> | null = null
@@ -27,6 +28,7 @@ async function run(): Promise<void> {
   dicomImageLoaderInit({
     maxWebWorkers: Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 7)),
   })
+  registerNiftiImageLoader()
 
   // Register the tools we use once, globally.
   addTool(WindowLevelTool)

@@ -141,15 +141,15 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
             <span className="text-faint">Nothing leaves your device.</span>
           </h1>
           <p className="max-w-[600px] text-[17px] leading-[1.55] text-muted-foreground text-pretty">
-            Open DICOM files to scroll through CT, MR and X-ray series, search
-            every header tag, and anonymise a study before you share it.
+            Open DICOM and NIfTI scans to scroll through CT, MR and X-ray series,
+            search every header tag, and anonymise a study before you share it.
             Everything runs on your own machine.
           </p>
         </div>
 
         {/* Dropzone, styled as an empty viewer */}
         <section
-          aria-label="Open DICOM data"
+          aria-label="Open DICOM or NIfTI data"
           className={cn(
             "w-full overflow-hidden rounded-2xl border bg-card shadow-[0_24px_64px_-24px_rgba(0,0,0,0.35)] transition-colors",
             dragging ? "border-primary" : "border-line-strong",
@@ -218,11 +218,11 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
                   <>
                     <div className="flex flex-col gap-1.5">
                       <div className="text-[17px] font-medium">
-                        Drop a DICOM folder anywhere on this page
+                        Drop a scan anywhere on this page
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        CD and PACS exports, .zip archives, .dcm and
-                        extension-less files
+                        DICOM and NIfTI: CD and PACS exports, .zip archives,
+                        .dcm, .nii, .nii.gz and extension-less files
                       </div>
                     </div>
                     <div className="flex flex-wrap justify-center gap-2">

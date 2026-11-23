@@ -17,6 +17,13 @@ import {
   type DicomTags,
   type SkipReason,
 } from '@/lib/dicom/parse'
+import { looksLikeNifti } from '@/lib/nifti/detect'
+import {
+  addNiftiVolume,
+  clearNiftiVolumes,
+  niftiVolumeIdOf,
+  releaseNiftiVolume,
+} from '@/lib/cornerstone/loadNifti'
 
 export { describeSkipped, type DicomTags, type SkipReason } from '@/lib/dicom/parse'
 
@@ -74,6 +81,7 @@ export function clearRegisteredFiles() {
   sopInstanceUids.clear()
   tagRegistry.clear()
   fileRegistry.clear()
+  clearNiftiVolumes()
   wadouri.dataSetCacheManager.purge()
   cache.purgeCache()
 }
@@ -99,6 +107,37 @@ export function releaseImages(imageIds: string[]) {
       wadouri.dataSetCacheManager.unload(index)
     }
   }
+  // Drop the voxel data of any NIfTI volumes among these images.
+  for (const volumeId of new Set(imageIds.map(niftiVolumeIdOf))) {
+    if (volumeId) releaseNiftiVolume(volumeId)
+  }
+}
+
+/**
+ * Parse a NIfTI file into a stack of slices and register each slice's tags and
+ * source file. Throws a SkipError if the bytes turn out not to be usable NIfTI.
+ */
+async function registerNifti(
+  file: File,
+  instances: RegisteredInstance[],
+  signal?: AbortSignal,
+): Promise<void> {
+  let reg
+  try {
+    reg = await addNiftiVolume(file)
+  } catch (err) {
+    throw new SkipError(/Unsupported NIfTI datatype/.test(String(err)) ? 'unsupported' : 'notDicom')
+  }
+  if (signal?.aborted) return
+  reg.imageIds.forEach((imageId, k) => {
+    tagRegistry.set(imageId, reg.perSliceTags[k])
+    fileRegistry.set(imageId, file)
+  })
+  instances.push({
+    imageIds: reg.imageIds,
+    bytes: file.size,
+    tags: reg.perSliceTags[0],
+  })
 }
 
 /**
@@ -125,6 +164,10 @@ export async function registerFiles(
     while (cursor < candidates.length && !signal?.aborted) {
       const file = candidates[cursor++]
       try {
+        if (await looksLikeNifti(file)) {
+          await registerNifti(file, instances, signal)
+          continue
+        }
         if (!(await looksLikeDicom(file))) throw new SkipError('notDicom')
         const bytes = new Uint8Array(await file.arrayBuffer())
         const tags = parseTags(bytes)

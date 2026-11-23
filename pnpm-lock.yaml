@@ -172,6 +172,9 @@ importers:
       '@cornerstonejs/dicom-image-loader':
         specifier: ^5.19.0
         version: 5.19.0(@cornerstonejs/core@5.19.0(@cornerstonejs/metadata@5.19.0)(@cornerstonejs/utils@5.19.0)(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0))(@cornerstonejs/metadata@5.19.0)(dicom-parser@1.8.21)
+      '@cornerstonejs/nifti-volume-loader':
+        specifier: 5.19.0
+        version: 5.19.0(@cornerstonejs/core@5.19.0(@cornerstonejs/metadata@5.19.0)(@cornerstonejs/utils@5.19.0)(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0))
       '@cornerstonejs/tools':
         specifier: ^5.19.0
         version: 5.19.0(@cornerstonejs/core@5.19.0(@cornerstonejs/metadata@5.19.0)(@cornerstonejs/utils@5.19.0)(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0))(@kitware/vtk.js@36.4.1(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0))(@types/d3-array@3.2.1)(@types/d3-interpolate@3.0.4)(d3-array@3.2.4)(d3-interpolate@3.0.1)(gl-matrix@3.4.3)
@@ -349,6 +352,11 @@ packages:
 
   '@cornerstonejs/metadata@5.19.0':
     resolution: {integrity: sha512-FQ2wuTRY3YegyXWYW3kMSIZbqIOdK7ZpfGzjuqCXI4rzDoLr83YPOyJuxMXGMFp7wssvyiHUtki90OruF3N+/Q==}
+
+  '@cornerstonejs/nifti-volume-loader@5.19.0':
+    resolution: {integrity: sha512-y60lB2AK5mCydkIDhB9W2ZWcAlwl4OinBv5MogevQiOUFAqmitoUXQuhDO6B8VKqXitEupeQ6rOTacrtIdC6mw==}
+    peerDependencies:
+      '@cornerstonejs/core': 5.19.0
 
   '@cornerstonejs/tools@5.19.0':
     resolution: {integrity: sha512-RYPRYSuPw+fd1UM6LPNtqovnxP+1OWmmQB3LA9U9s+TAWZ3zfXbCvbOpQMFz12RX0UeBIOAKPf4WfC8VrwktAQ==}
@@ -2635,6 +2643,9 @@ packages:
       react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
       react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
 
+  nifti-reader-js@0.6.9:
+    resolution: {integrity: sha512-oEC35cuYFR0i+KeXhaK0hJz4oSj511Vo7LmO/6iqbxzwek6XWnBi77VURlk4jsnJ86tlJNpYv6ujmSDpPP46Tw==}
+
   node-emoji@2.2.0:
     resolution: {integrity: sha512-Z3lTE9pLaJF47NyMhd4ww1yFTAP8YhYI8SleJiHzM46Fgpm5cnNzSl9XfzFNqbaz+VlJrIj3fXQ4DeN1Rjm6cw==}
     engines: {node: '>=18'}
@@ -3577,6 +3588,11 @@ snapshots:
       '@cornerstonejs/utils': 5.19.0
       dcmjs: 0.52.0
       gl-matrix: 3.4.3
+
+  '@cornerstonejs/nifti-volume-loader@5.19.0(@cornerstonejs/core@5.19.0(@cornerstonejs/metadata@5.19.0)(@cornerstonejs/utils@5.19.0)(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0))':
+    dependencies:
+      '@cornerstonejs/core': 5.19.0(@cornerstonejs/metadata@5.19.0)(@cornerstonejs/utils@5.19.0)(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0)
+      nifti-reader-js: 0.6.9
 
   '@cornerstonejs/tools@5.19.0(@cornerstonejs/core@5.19.0(@cornerstonejs/metadata@5.19.0)(@cornerstonejs/utils@5.19.0)(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0))(@kitware/vtk.js@36.4.1(autoprefixer@10.6.2(postcss@8.5.33))(wslink@2.5.0))(@types/d3-array@3.2.1)(@types/d3-interpolate@3.0.4)(d3-array@3.2.4)(d3-interpolate@3.0.1)(gl-matrix@3.4.3)':
     dependencies:
@@ -5721,6 +5737,10 @@ snapshots:
     dependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
+
+  nifti-reader-js@0.6.9:
+    dependencies:
+      fflate: 0.8.3
 
   node-emoji@2.2.0:
     dependencies:

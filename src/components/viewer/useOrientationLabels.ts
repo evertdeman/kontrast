@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Enums, type Types } from '@cornerstonejs/core'
+import { Enums } from '@cornerstonejs/core'
 import { getImageTags } from '@/lib/cornerstone/loadDicom'
+import type { AnyViewport } from '@/lib/cornerstone/viewportNav'
 import {
   lpsLabel,
   patientOrientationLabel,
@@ -22,7 +23,7 @@ function sameLabels(a: ScreenLabels | null, b: ScreenLabels | null): boolean {
  * camera changes, so flips and rotations are reflected.
  */
 export function useOrientationLabels(
-  viewport: Types.IStackViewport | null,
+  viewport: AnyViewport | null,
   imageId: string | undefined,
 ): ScreenLabels | null {
   const [labels, setLabels] = useState<ScreenLabels | null>(null)

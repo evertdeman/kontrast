@@ -21,6 +21,8 @@ export interface StudyInfo {
   series: SeriesInfo[]
   imageCount: number
   bytes: number
+  /** Source format: 'dicom', or 'nifti' for viewing-only NIfTI volumes. */
+  format: 'dicom' | 'nifti'
 }
 
 /** Shown when a study has no Study Description of its own. */
@@ -52,6 +54,7 @@ export function groupIntoStudies(instances: RegisteredInstance[]): StudyInfo[] {
         series: [],
         imageCount: 0,
         bytes: 0,
+        format: tags.format,
       })
     }
 

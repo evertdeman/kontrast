@@ -1,12 +1,12 @@
-import type { Types } from '@cornerstonejs/core'
 import { Play, Pause, TriangleAlert } from 'lucide-react'
 import { Viewport } from '@/components/Viewport'
 import type { StudyHeader } from '@/lib/cornerstone/metadata'
+import type { AnyViewport } from '@/lib/cornerstone/viewportNav'
 import { useOrientationLabels } from '@/components/viewer/useOrientationLabels'
 
 interface ViewportStageProps {
   imageIds: string[]
-  viewport: Types.IStackViewport | null
+  viewport: AnyViewport | null
   /** Number of images in this series that failed to decode. */
   failedCount: number
   header: StudyHeader
@@ -16,7 +16,7 @@ interface ViewportStageProps {
   playing: boolean
   onTogglePlay: () => void
   onScrub: (index: number) => void
-  onViewportReady: (vp: Types.IStackViewport) => void
+  onViewportReady: (vp: AnyViewport) => void
   onIndexChange: (index: number) => void
   onLoadError: (imageId: string) => void
 }

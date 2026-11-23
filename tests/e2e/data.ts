@@ -2,7 +2,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { zipSync } from 'fflate'
+import { gzipSync, zipSync } from 'fflate'
 import { buildDicom, type DicomDataset } from '../../src/test/buildDicom'
 
 const CT_IMAGE_STORAGE = '1.2.840.10008.5.1.4.1.1.2'
@@ -104,6 +104,59 @@ export function ctHeadZip(dir: string, count = 6): string {
   }
   const file = path.join(dir, 'ct-head.zip')
   writeFileSync(file, zipSync(entries, { level: 6 }))
+  return file
+}
+
+/**
+ * A minimal single-file NIfTI-1 (.nii) int16 volume with an identity sform, for
+ * the NIfTI viewer path. A bright disk per axial slice, so it renders content.
+ */
+function buildNifti({
+  columns = 16,
+  rows = 16,
+  slices = 8,
+}: { columns?: number; rows?: number; slices?: number } = {}): Uint8Array {
+  const voxOffset = 352
+  const buf = new ArrayBuffer(voxOffset + columns * rows * slices * 2)
+  const v = new DataView(buf)
+  v.setInt32(0, 348, true)
+  ;[3, columns, rows, slices, 1, 1, 1, 1].forEach((d, i) => v.setInt16(40 + i * 2, d, true))
+  v.setInt16(70, 4, true) // datatype: int16
+  v.setInt16(72, 16, true) // bitpix
+  ;[1, 1, 1, 1, 0, 0, 0, 0].forEach((p, i) => v.setFloat32(76 + i * 4, p, true)) // pixdim
+  v.setFloat32(108, voxOffset, true) // vox_offset
+  v.setFloat32(124, 1000, true) // cal_max
+  v.setFloat32(128, 0, true) // cal_min
+  v.setInt16(254, 1, true) // sform_code
+  // Identity sform (RAS), with an offset so slices have distinct positions.
+  ;[
+    [1, 0, 0, -8],
+    [0, 1, 0, -8],
+    [0, 0, 1, 0],
+  ].forEach((row, r) => row.forEach((val, c) => v.setFloat32([280, 296, 312][r] + c * 4, val, true)))
+  'n+1\0'.split('').forEach((ch, i) => v.setUint8(344 + i, ch.charCodeAt(0)))
+  for (let k = 0; k < slices; k++) {
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < columns; x++) {
+        const o = voxOffset + (k * rows * columns + y * columns + x) * 2
+        v.setInt16(o, Math.hypot(x - columns / 2, y - rows / 2) < columns / 3 ? 1000 : 0, true)
+      }
+    }
+  }
+  return new Uint8Array(buf)
+}
+
+/** A plain `.nii` volume on disk. */
+export function niftiFile(dir: string): string {
+  const file = path.join(dir, 'brain.nii')
+  writeFileSync(file, buildNifti())
+  return file
+}
+
+/** A gzip-compressed `.nii.gz` volume on disk, to exercise decompression. */
+export function niftiGzFile(dir: string): string {
+  const file = path.join(dir, 'brain.nii.gz')
+  writeFileSync(file, gzipSync(buildNifti()))
   return file
 }
 

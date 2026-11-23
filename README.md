@@ -18,6 +18,7 @@ Kontrast is a DICOM viewer that runs entirely in your browser. Drop in a folder,
 - Folders, individual files and `.zip` archives (including zips inside zips and large ZIP64 archives), by drag and drop or file picker
 - CD and PACS exports: files with no extension, files named by UID, `DICOMDIR` folders
 - Multi-frame files such as ultrasound clips and enhanced CT/MR, one image per frame
+- NIfTI volumes (`.nii` and `.nii.gz`), the common neuroimaging format, shown slice by slice (view-only: no header, anonymise or edit, since NIfTI carries no patient identifiers)
 - Common compressions: JPEG baseline and lossless, JPEG-LS, JPEG 2000, HTJ2K, JPEG XL and RLE
 - Names and text in the file's own character set, including UTF-8, Cyrillic, Japanese, Korean and Chinese
 - A clear summary of anything skipped and why (not DICOM, no image, unsupported compression such as video, damaged zip, already open)
@@ -79,7 +80,7 @@ You don't have to take this on trust:
 
 1. **Watch the network.** Open your browser's developer tools on the **Network** tab and tick *Preserve log*. Then open, view, anonymise and save your own files. You will only see `GET` requests for the app's own code files the first time they are needed (for example `decodeImageFrameWorker-….js` or a WebAssembly image decoder), and `blob:` entries, which exist only inside your browser. There are no `POST` or `PUT` requests and nothing goes to another domain.
 2. **Pull the plug.** Load the app and open the sample study once, so its image decoders are loaded. Then switch the Network tab to *Offline*, or disconnect from the internet, and open your own files. Viewing, searching the header and anonymising still work. (Files that use a compression the sample doesn't may need their decoder to load first.)
-3. **Read the policy.** View the page source: the first tag in `<head>` is the Content-Security-Policy, with `connect-src 'self'`.
+3. **Read the policy.** View the page source: the first tag in `<head>` is the Content-Security-Policy. Its `connect-src` is `'self' blob:` — `blob:` only lets the NIfTI viewer read in-memory object URLs built from your own files; it permits no remote origin, so files still never leave your device.
 4. **Run the tests.** `pnpm test:e2e --grep privacy` uses the app the way a visitor would and fails if it contacts another server, sets a cookie or stores more than the privacy page lists.
 
 ## Running it locally
@@ -131,7 +132,7 @@ git clone --depth 1 https://github.com/pydicom/pydicom-data.git test-data/pydico
 
 ## Built with
 
-- [Cornerstone3D](https://www.cornerstonejs.org/) for rendering and image decoding
+- [Cornerstone3D](https://www.cornerstonejs.org/) for rendering and image decoding, with its [NIfTI volume loader](https://github.com/cornerstonejs/cornerstone3D) (and [nifti-reader-js](https://github.com/rii-mango/NIFTI-Reader-JS)) for NIfTI
 - [dicom-parser](https://github.com/cornerstonejs/dicomParser) and [dcmjs](https://github.com/dcmjs-org/dcmjs) for reading headers
 - [fflate](https://github.com/101arrowz/fflate) for writing zips
 - React, TypeScript and Vite

@@ -250,7 +250,7 @@ export function Studies({
         ) : (
           !indexing && (
             <div className="rounded-xl border border-dashed border-line-strong px-6 py-16 text-center text-sm text-muted-foreground">
-              No studies loaded. Use “Add folder” or “Add files” to open DICOM data.
+              No studies loaded. Use “Add folder” or “Add files” to open DICOM or NIfTI data.
             </div>
           )
         )}
@@ -385,14 +385,19 @@ function StudyRow({
                 <Info />
                 Details
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onAnonymize}>
-                <VenetianMask />
-                Anonymise…
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onEditTags}>
-                <FilePen />
-                Edit tags…
-              </DropdownMenuItem>
+              {/* Anonymise and edit rewrite DICOM headers; NIfTI is view-only. */}
+              {study.format !== 'nifti' && (
+                <>
+                  <DropdownMenuItem onSelect={onAnonymize}>
+                    <VenetianMask />
+                    Anonymise…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onEditTags}>
+                    <FilePen />
+                    Edit tags…
+                  </DropdownMenuItem>
+                </>
+              )}
               {onDownload && (
                 <DropdownMenuItem onSelect={onDownload}>
                   <Download />
