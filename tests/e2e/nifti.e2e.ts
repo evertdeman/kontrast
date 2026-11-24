@@ -18,24 +18,13 @@ test('opens a .nii volume, renders it and scrolls its slices', async ({ page }) 
 
   await openViewer(page, row)
   await expect.poll(() => canvasHasContent(viewport(page).locator('canvas').first())).toBe(true)
-  // Rendered as a volume: 8 slices, opening on the middle one.
-  await expect(sliceCounter(page).first()).toHaveText(/^\d+ \/ 8$/)
-  // Windowed to the volume's range (disk 1000 on 0 background), not blown out.
-  await expect
-    .poll(async () => {
-      const m = /^W (\d+) L (\d+)$/.exec(await windowLevel(page))
-      if (!m) return false
-      const [, ww, wl] = m.map(Number)
-      return ww >= 900 && ww <= 1000 && wl >= 400 && wl <= 600
-    })
-    .toBe(true)
+  await expect(sliceCounter(page)).toHaveText('1 / 8')
+  // Windowed to the header's display range (cal_min 0, cal_max 1000); DICOM's
+  // linear window function reads that back as a width of 999.
+  await expect.poll(() => windowLevel(page)).toBe('W 999 L 500')
 
-  // Scrolling moves through the slices.
-  const before = Number(/^(\d+)/.exec((await sliceCounter(page).first().textContent()) ?? '')![1])
   await page.keyboard.press('ArrowDown')
-  await expect.poll(async () =>
-    Number(/^(\d+)/.exec((await sliceCounter(page).first().textContent()) ?? '')![1]),
-  ).toBe(before + 1)
+  await expect(sliceCounter(page)).toHaveText('2 / 8')
 
   // NIfTI has no DICOM header, so the full-header view is hidden.
   await expect(page.getByRole('button', { name: /View full header/ })).toHaveCount(0)

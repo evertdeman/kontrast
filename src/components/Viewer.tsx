@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Enums } from '@cornerstonejs/core'
-import { currentSlice, type AnyViewport } from '@/lib/cornerstone/viewportNav'
+import { Enums, type Types } from '@cornerstonejs/core'
 import { ViewerTopBar } from '@/components/viewer/ViewerTopBar'
 import { SeriesRail } from '@/components/viewer/SeriesRail'
 import { ViewerToolbar } from '@/components/viewer/ViewerToolbar'
@@ -35,7 +34,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
   // NIfTI has no DICOM header to show, so the full-header view (button + H) is hidden.
   const showHeader = study.format !== 'nifti'
 
-  const [viewport, setViewport] = useState<AnyViewport | null>(null)
+  const [viewport, setViewport] = useState<Types.IStackViewport | null>(null)
   const [index, setIndex] = useState(0)
   const [activeTool, setActiveTool] = useState<PrimaryTool>('WindowLevel')
   const [windowValues, setWindowValues] = useState<{ ww: number; wl: number } | null>(
@@ -92,8 +91,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
 
   const handleInvert = useCallback(() => {
     if (!viewport) return
-    // `invert` is supported on both viewport kinds but typed only on the stack one.
-    const invert = (viewport.getProperties() as { invert?: boolean }).invert
+    const { invert } = viewport.getProperties()
     viewport.setProperties({ invert: !invert })
     viewport.render()
   }, [viewport])
@@ -139,7 +137,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
       const key = e.key.toLowerCase()
       const step = (delta: number) => {
         if (!viewport || total < 1) return
-        const current = currentSlice(viewport)
+        const current = viewport.getCurrentImageIdIndex()
         setViewportIndex(viewport, Math.min(total - 1, Math.max(0, current + delta)))
       }
 
@@ -165,7 +163,7 @@ export function Viewer({ study, initialSeriesUID, onBack }: ViewerProps) {
   useEffect(() => {
     if (!playing || !viewport || total < 2) return
     const id = window.setInterval(() => {
-      const current = currentSlice(viewport)
+      const current = viewport.getCurrentImageIdIndex()
       setViewportIndex(viewport, (current + 1) % total)
     }, 1000 / 24)
     return () => window.clearInterval(id)

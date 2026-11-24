@@ -154,9 +154,6 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
   if (view === 'viewer' && active && activeStudy) {
     return (
       <Viewer
-        // Remount per study so the viewport is rebuilt for its type (DICOM
-        // stack vs NIfTI volume), which is fixed when the viewport is created.
-        key={activeStudy.studyUID}
         study={activeStudy}
         initialSeriesUID={active.seriesUID}
         onBack={() => setView('studies')}

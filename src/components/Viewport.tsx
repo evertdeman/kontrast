@@ -6,20 +6,15 @@ import {
   type Types,
 } from '@cornerstonejs/core'
 import { initCornerstone } from '@/lib/cornerstone/init'
-import { ensureNiftiVolume } from '@/lib/cornerstone/loadNifti'
-import { currentSlice, gotoSlice, type AnyViewport } from '@/lib/cornerstone/viewportNav'
 import { ensureToolGroup, TOOL_GROUP_ID } from '@/lib/cornerstone/toolGroup'
 import { ToolGroupManager } from '@cornerstonejs/tools'
 
-const RENDERING_ENGINE_ID = 'kontrast-rendering-engine'
-const VIEWPORT_ID = 'kontrast-viewport'
-
-/** NIfTI slice ids render as a Volume viewport; DICOM ids as a Stack viewport. */
-const isNiftiStack = (imageIds: string[]) => imageIds[0]?.startsWith('nifti:') ?? false
+const RENDERING_ENGINE_ID = 'dicom-rendering-engine'
+const VIEWPORT_ID = 'dicom-stack-viewport'
 
 interface ViewportProps {
   imageIds: string[]
-  onViewportReady?: (viewport: AnyViewport) => void
+  onViewportReady?: (viewport: Types.IStackViewport) => void
   onIndexChange?: (index: number) => void
   onLoadError?: (imageId: string) => void
 }
@@ -32,15 +27,12 @@ export function Viewport({
 }: ViewportProps) {
   const elementRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<RenderingEngine | null>(null)
-  // Fixed for this component's life; the viewer remounts Viewport per study.
-  const volumeRef = useRef(isNiftiStack(imageIds))
 
   // Set up engine + viewport once.
   useEffect(() => {
     let disposed = false
     const element = elementRef.current
     if (!element) return
-    const isVolume = volumeRef.current
 
     async function setup() {
       await initCornerstone()
@@ -51,19 +43,15 @@ export function Viewport({
 
       engine.enableElement({
         viewportId: VIEWPORT_ID,
-        type: isVolume ? Enums.ViewportType.ORTHOGRAPHIC : Enums.ViewportType.STACK,
+        type: Enums.ViewportType.STACK,
         element,
-        defaultOptions: {
-          background: [0, 0, 0],
-          // Show the volume's native slices, matching how a stack would.
-          ...(isVolume && { orientation: Enums.OrientationAxis.ACQUISITION }),
-        },
+        defaultOptions: { background: [0, 0, 0] },
       })
 
       const toolGroup = ensureToolGroup()
       toolGroup.addViewport(VIEWPORT_ID, RENDERING_ENGINE_ID)
 
-      const viewport = engine.getViewport(VIEWPORT_ID) as AnyViewport
+      const viewport = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport
       onViewportReady?.(viewport)
     }
 
@@ -93,7 +81,7 @@ export function Viewport({
         if (!engine) return
         // Refit to the new size, then restore zoom/pan/rotation/flips, which
         // are relative to the fitted view, so an unzoomed image stays fitted.
-        const viewport = engine.getViewport(VIEWPORT_ID) as AnyViewport | undefined
+        const viewport = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport | undefined
         let presentation: Types.ViewPresentation | undefined
         try {
           presentation = viewport?.getViewPresentation()
@@ -114,19 +102,21 @@ export function Viewport({
     }
   }, [])
 
-  // Report the current slice index as the user scrolls.
+  // Report the current image index as the user scrolls the stack.
   useEffect(() => {
     const element = elementRef.current
     if (!element) return
-    const event = volumeRef.current
-      ? Enums.Events.VOLUME_NEW_IMAGE
-      : Enums.Events.STACK_NEW_IMAGE
-    const handler = () => {
-      const viewport = engineRef.current?.getViewport(VIEWPORT_ID) as AnyViewport | undefined
-      if (viewport) onIndexChange?.(currentSlice(viewport))
+    const handler = (evt: Event) => {
+      const detail = (evt as CustomEvent).detail as {
+        imageIdIndex?: number
+        newImageIdIndex?: number
+      }
+      const idx = detail?.newImageIdIndex ?? detail?.imageIdIndex
+      if (typeof idx === 'number') onIndexChange?.(idx)
     }
-    element.addEventListener(event, handler)
-    return () => element.removeEventListener(event, handler)
+    element.addEventListener(Enums.Events.STACK_NEW_IMAGE, handler)
+    return () =>
+      element.removeEventListener(Enums.Events.STACK_NEW_IMAGE, handler)
   }, [onIndexChange])
 
   // Report images that fail to load or decode.
@@ -139,36 +129,28 @@ export function Viewport({
     return () => eventTarget.removeEventListener(Enums.Events.IMAGE_LOAD_ERROR, handler)
   }, [imageIds, onLoadError])
 
-  // Load / replace the image data whenever the imageIds change.
+  // Load / replace the stack whenever the imageIds change.
   useEffect(() => {
     let cancelled = false
-    async function load() {
+    async function loadStack() {
       await initCornerstone()
       const engine = engineRef.current
       if (!engine || cancelled || imageIds.length === 0) return
-      const viewport = engine.getViewport(VIEWPORT_ID) as AnyViewport
+      const viewport = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport
       if (!viewport) return
       try {
-        if (volumeRef.current) {
-          const volumeId = await ensureNiftiVolume(imageIds)
-          if (cancelled) return
-          await (viewport as Types.IVolumeViewport).setVolumes([{ volumeId }])
-        } else {
-          await (viewport as Types.IStackViewport).setStack(imageIds, 0)
-        }
+        await viewport.setStack(imageIds, 0)
       } catch (err) {
         if (cancelled) return
         console.error(err)
         onLoadError?.(imageIds[0])
-        return
       }
-      // A newer request arrived while this one loaded; let that one win.
+      // A newer stack was requested while this one loaded; let that one win.
       if (cancelled) return
       viewport.render()
-      // Volume viewports open on their middle slice, not 0; report the real one.
-      onIndexChange?.(currentSlice(viewport))
+      onIndexChange?.(0)
     }
-    void load()
+    void loadStack()
     return () => {
       cancelled = true
     }
@@ -185,8 +167,17 @@ export function Viewport({
   )
 }
 
-/** Imperatively move a viewport to a given slice index. */
-export function setViewportIndex(viewport: AnyViewport | null, index: number) {
+/** Imperatively move a stack viewport to a given image index. */
+export function setViewportIndex(
+  viewport: Types.IStackViewport | null,
+  index: number,
+) {
   if (!viewport) return
-  gotoSlice(viewport, index)
+  try {
+    viewport.setImageIdIndex(index)
+  } catch {
+    /* index out of range during rapid updates — ignore */
+  }
 }
+
+export { VIEWPORT_ID, RENDERING_ENGINE_ID }

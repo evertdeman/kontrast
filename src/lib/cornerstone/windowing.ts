@@ -1,9 +1,9 @@
 /** Window/level readout and screenshot helpers. */
-import type { AnyViewport } from '@/lib/cornerstone/viewportNav'
+import type { Types } from '@cornerstonejs/core'
 
 /** Read the viewport's current WW/WL from its voiRange, if available. */
 export function currentWindow(
-  viewport: AnyViewport,
+  viewport: Types.IStackViewport,
 ): { ww: number; wl: number } | null {
   const range = viewport.getProperties()?.voiRange
   if (!range) return null
@@ -35,14 +35,14 @@ export function presetsFor(modality: string): WindowPreset[] {
   return modality.toUpperCase() === 'CT' ? CT_PRESETS : []
 }
 
-export function applyWindow(viewport: AnyViewport, { ww, wl }: { ww: number; wl: number }) {
+export function applyWindow(viewport: Types.IStackViewport, { ww, wl }: { ww: number; wl: number }) {
   viewport.setProperties({ voiRange: { lower: wl - ww / 2, upper: wl + ww / 2 } })
   viewport.render()
 }
 
 /** Download the current viewport canvas as a PNG. Stays fully client-side. */
 export function saveScreenshot(
-  viewport: AnyViewport,
+  viewport: Types.IStackViewport,
   filename = 'kontrast-capture.png',
 ) {
   const canvas = viewport.getCanvas()

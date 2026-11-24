@@ -1,218 +1,202 @@
 /**
- * Render NIfTI volumes through Cornerstone's official NIfTI loader
- * (@cornerstonejs/nifti-volume-loader, which parses with nifti-reader-js).
+ * Show NIfTI volumes in the same stack viewport as DICOM, one image per slice.
  *
- * NIfTI is rendered in a Volume viewport (which the loader is built for):
- * Cornerstone's volume renderer handles the float data that intensity-scaled
- * NIfTI produces, and computes a volume-wide window — the stack renderer does
- * neither reliably. `createNiftiImageIdsAndCacheMetadata` gives one image id
- * per slice (with plane/pixel metadata); a streaming volume is built from them.
- *
- * Fully client-side: a file is turned into an in-memory `blob:` object URL and
- * the loader fetches that. Nothing leaves the tab; the app's CSP still blocks
- * every remote connection (it allows `blob:`, which is local-only, for this).
+ * A file is indexed from its header alone. Its voxels are read the first time
+ * one of its slices is shown, and every slice is a view into that one array.
+ * All in memory: nothing leaves the device.
  */
-import { cache, metaData, registerImageLoader, volumeLoader, type Types } from '@cornerstonejs/core'
+import { Enums, metaData, registerImageLoader, utilities, type Types } from '@cornerstonejs/core'
+import { SkipError, type DicomTags } from '@/lib/dicom/parse'
 import {
-  cornerstoneNiftiImageLoader,
-  createNiftiImageIdsAndCacheMetadata,
-  init as niftiLoaderInit,
-} from '@cornerstonejs/nifti-volume-loader'
-import type { DicomTags } from '@/lib/dicom/parse'
-import { readNiftiBytes } from '@/lib/nifti/detect'
+  niftiLayout,
+  readNiftiHeader,
+  readNiftiPixels,
+  slicePosition,
+  type NiftiHeader,
+  type NiftiLayout,
+  type NiftiPixels,
+} from '@/lib/nifti/volume'
 
-const SCHEME = 'nifti'
-/** Scheme for the streaming volume id; falls back to the streaming volume loader. */
-const VOLUME_SCHEME = 'cornerstoneStreamingImageVolume'
-/** Active object URLs (one per volume), so they can be revoked on release. */
-const objectUrls = new Set<string>()
-let loaderRegistered = false
+export const NIFTI_FILE = /\.nii(\.gz)?$/i
 
-/** The Cornerstone volume id for a NIfTI study's slice image ids. */
-function niftiVolumeId(imageIds: string[]): string {
-  return `${VOLUME_SCHEME}:${niftiVolumeIdOf(imageIds[0]) ?? imageIds[0]}`
+interface NiftiVolume {
+  file: File
+  header: NiftiHeader
+  layout: NiftiLayout
+  /** Read on first use. */
+  pixels?: Promise<NiftiPixels>
 }
 
-/** Build and start loading the streaming volume for these slices; returns its id. */
-export async function ensureNiftiVolume(imageIds: string[]): Promise<string> {
-  const volumeId = niftiVolumeId(imageIds)
-  if (!cache.getVolume(volumeId) && !cache.getVolumeLoadObject(volumeId)) {
-    const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds })
-    void volume.load()
-  }
-  return volumeId
+/** Volumes by id. Ids are never reused, as Cornerstone caches by imageId. */
+const volumes = new Map<number, NiftiVolume>()
+let nextId = 0
+
+function parseImageId(imageId: string): { id: number; slice: number } | null {
+  const match = /^nifti:(\d+)\/(\d+)$/.exec(imageId)
+  return match ? { id: Number(match[1]), slice: Number(match[2]) } : null
 }
 
-/** The object URL behind a `nifti:<url>?frame=<k>` image id, or null. */
-export function niftiVolumeIdOf(imageId: string): string | null {
-  if (!imageId.startsWith(`${SCHEME}:`)) return null
-  return imageId.slice(SCHEME.length + 1).split('?frame=')[0] || null
+function loadImage(imageId: string): Types.IImageLoadObject {
+  const promise = (async (): Promise<Types.IImage> => {
+    const parsed = parseImageId(imageId)
+    const volume = parsed && volumes.get(parsed.id)
+    if (!volume) throw new Error(`Unknown NIfTI image ${imageId}`)
+    volume.pixels ??= readNiftiPixels(volume.file, volume.header, volume.layout)
+    const pixels = await volume.pixels
+    const { columns, rows, columnSpacing, rowSpacing } = volume.layout
+    const length = columns * rows
+    const data = pixels.data.subarray(parsed.slice * length, (parsed.slice + 1) * length)
+    return {
+      imageId,
+      rows,
+      columns,
+      height: rows,
+      width: columns,
+      columnPixelSpacing: columnSpacing,
+      rowPixelSpacing: rowSpacing,
+      minPixelValue: pixels.min,
+      maxPixelValue: pixels.max,
+      windowCenter: pixels.windowCenter,
+      windowWidth: pixels.windowWidth,
+      voiLUTFunction: Enums.VOILUTFunctionType.LINEAR,
+      slope: 1,
+      intercept: 0,
+      color: false,
+      rgba: false,
+      invert: false,
+      numberOfComponents: 1,
+      dataType: 'Float32Array',
+      sizeInBytes: data.byteLength,
+      getPixelData: () => data,
+      getCanvas: () => {
+        throw new Error('NIfTI images have no canvas')
+      },
+      voxelManager: utilities.VoxelManager.createImageVoxelManager({
+        width: columns,
+        height: rows,
+        numberOfComponents: 1,
+        scalarData: data,
+      }),
+    }
+  })()
+  return { promise }
 }
 
-/**
- * The library's loader returns slices with no window/level set. The volume
- * viewport computes its own window from the whole volume, but the single-image
- * canvas path (study-list thumbnails) needs one, so default each slice to its
- * own intensity range.
- */
-function loadNiftiSlice(imageId: string, options: unknown) {
-  const inner = (cornerstoneNiftiImageLoader as (id: string, o: unknown) => {
-    promise: Promise<Types.IImage>
-    cancelFn?: () => void
-    decache?: () => void
-  })(imageId, options)
-  return {
-    ...inner,
-    promise: inner.promise.then((image) => {
-      if (image.windowWidth == null) {
-        const { minPixelValue: min, maxPixelValue: max } = image
-        image.windowCenter = (min + max) / 2
-        // Use the actual range; floating-point volumes can span < 1.
-        image.windowWidth = max > min ? max - min : 1
+function provideMetadata(type: string, imageId: string): unknown {
+  const parsed = parseImageId(imageId)
+  const layout = parsed && volumes.get(parsed.id)?.layout
+  if (!layout) return undefined
+  const { rows, columns, rowCosines, columnCosines, rowSpacing, columnSpacing } = layout
+  switch (type) {
+    case Enums.MetadataModules.IMAGE_PLANE:
+      return {
+        frameOfReferenceUID: `nifti-${parsed.id}`,
+        rows,
+        columns,
+        rowCosines,
+        columnCosines,
+        imageOrientationPatient: [...rowCosines, ...columnCosines],
+        imagePositionPatient: slicePosition(layout, parsed.slice),
+        pixelSpacing: [rowSpacing, columnSpacing],
+        rowPixelSpacing: rowSpacing,
+        columnPixelSpacing: columnSpacing,
+        sliceThickness: layout.sliceSpacing,
       }
-      return image
-    }),
+    case Enums.MetadataModules.IMAGE_PIXEL:
+      return {
+        samplesPerPixel: 1,
+        photometricInterpretation: 'MONOCHROME2',
+        rows,
+        columns,
+        bitsAllocated: 32,
+        bitsStored: 32,
+        highBit: 31,
+        pixelRepresentation: 1,
+      }
+    case Enums.MetadataModules.GENERAL_SERIES:
+      return { modality: '' }
+    default:
+      return undefined
   }
 }
 
-/** Register the NIfTI image loader once, globally. */
+let registered = false
+
+/** Register the NIfTI image loader and metadata provider once, globally. */
 export function registerNiftiImageLoader() {
-  if (loaderRegistered) return
-  niftiLoaderInit()
-  registerImageLoader(SCHEME, loadNiftiSlice as Parameters<typeof registerImageLoader>[1])
-  loaderRegistered = true
+  if (registered) return
+  registerImageLoader('nifti', loadImage)
+  metaData.addProvider(provideMetadata, 10_000)
+  registered = true
 }
 
-/** Strip the directory and NIfTI extension from a file name, for display. */
-function baseName(name: string): string {
-  return name.replace(/^.*\//, '').replace(/\.nii(\.gz)?$/i, '') || 'NIfTI volume'
-}
+const decimals = (values: number[]) => values.map((n) => String(Number(n.toFixed(4)))).join('\\')
 
-const fmt = (n: unknown): string =>
-  typeof n === 'number' && Number.isFinite(n) ? String(Number(n.toFixed(4))) : ''
-
-const vec = (v: unknown): string =>
-  Array.isArray(v) ? v.map(fmt).filter(Boolean).join('\\') : ''
-
-/** Build a DICOM-style header for one NIfTI slice from the loader's cached metadata. */
-function buildTags(imageId: string, sliceIndex: number, volumeId: string, description: string): DicomTags {
-  const plane = (metaData.get('imagePlaneModule', imageId) ?? {}) as {
-    rows?: number
-    columns?: number
-    imageOrientationPatient?: number[]
-    imagePositionPatient?: number[]
-    rowPixelSpacing?: number
-    columnPixelSpacing?: number
-    sliceThickness?: number
-    sliceLocation?: number
-  }
-  const orientation =
-    plane.imageOrientationPatient && plane.imageOrientationPatient.length === 6
-      ? plane.imageOrientationPatient
-      : null
-  const position = plane.imagePositionPatient ?? null
-
-  const summary: Record<string, string> = {
-    StudyDescription: description,
-    SeriesDescription: 'Volume',
-    SeriesNumber: '1',
-    InstanceNumber: String(sliceIndex + 1),
-    Rows: plane.rows != null ? String(plane.rows) : '',
-    Columns: plane.columns != null ? String(plane.columns) : '',
-    PixelSpacing: `${fmt(plane.rowPixelSpacing)}\\${fmt(plane.columnPixelSpacing)}`,
-    SliceThickness: fmt(plane.sliceThickness),
-    SliceLocation: fmt(plane.sliceLocation),
-    ImagePositionPatient: vec(position),
-    PhotometricInterpretation: 'MONOCHROME2',
-  }
-  if (orientation) summary.ImageOrientationPatient = vec(orientation)
-  for (const key of Object.keys(summary)) if (!summary[key]) delete summary[key]
-
+/** A DICOM-style header for the whole file, like a multi-frame DICOM's. */
+function fileTags(id: number, name: string, layout: NiftiLayout): DicomTags {
+  const description = name.replace(NIFTI_FILE, '') || 'NIfTI volume'
+  const seriesDescription = layout.volumes > 1 ? `Volume 1 of ${layout.volumes}` : 'Volume'
+  const orientation = [...layout.rowCosines, ...layout.columnCosines]
   return {
-    studyUID: `nifti-study-${volumeId}`,
-    seriesUID: `nifti-series-${volumeId}`,
-    sopUID: `nifti-${volumeId}-${sliceIndex}`,
+    studyUID: `nifti-${id}`,
+    seriesUID: `nifti-${id}`,
+    sopUID: '',
     sopClassUID: '',
     modality: '',
     studyDescription: description,
-    seriesDescription: 'Volume',
+    seriesDescription,
     studyDate: '',
     patientName: '',
     patientId: '',
     patientSex: '',
     seriesNumber: 1,
-    instanceNumber: sliceIndex + 1,
-    rows: plane.rows ?? null,
-    columns: plane.columns ?? null,
-    numberOfFrames: 1,
+    instanceNumber: 1,
+    rows: layout.rows,
+    columns: layout.columns,
+    numberOfFrames: layout.slices,
     imageOrientation: orientation,
-    imagePosition: position,
+    imagePosition: layout.origin,
     patientOrientation: null,
     accession: '',
     burnedInAnnotation: '',
     format: 'nifti',
-    summary,
+    summary: {
+      StudyDescription: description,
+      SeriesDescription: seriesDescription,
+      Rows: String(layout.rows),
+      Columns: String(layout.columns),
+      NumberOfFrames: String(layout.slices),
+      PixelSpacing: decimals([layout.rowSpacing, layout.columnSpacing]),
+      SpacingBetweenSlices: decimals([layout.sliceSpacing]),
+      ImageOrientationPatient: decimals(orientation),
+    },
   }
-}
-
-export interface NiftiRegistration {
-  volumeId: string
-  imageIds: string[]
-  /** One synthesised DICOM-style header per slice, in display order. */
-  perSliceTags: DicomTags[]
 }
 
 /**
- * Parse a NIfTI file via the Cornerstone loader and return its slice image ids
- * and synthesised per-slice tags. The file becomes an in-memory object URL;
- * `.nii.gz` is decompressed first (blob URLs drop the extension the loader's
- * metadata fetch keys on, though the slice loader itself handles gzip).
+ * Index a NIfTI file from its header: an imageId per slice and one header for
+ * them all. Throws a SkipError if it isn't NIfTI we can show.
  */
-export async function addNiftiVolume(file: File): Promise<NiftiRegistration> {
-  const bytes = await readNiftiBytes(file)
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }))
-  objectUrls.add(url)
-  let imageIds: string[]
-  try {
-    imageIds = await createNiftiImageIdsAndCacheMetadata({ url })
-  } catch (err) {
-    releaseNiftiVolume(url)
-    throw err
-  }
-  if (imageIds.length === 0) {
-    releaseNiftiVolume(url)
-    throw new Error('NIfTI file has no image frames')
-  }
-  const description = baseName(file.name)
-  const perSliceTags = imageIds.map((imageId, k) => buildTags(imageId, k, url, description))
-  return { volumeId: url, imageIds, perSliceTags }
-}
-
-/** Drop the cached streaming volume built from a NIfTI object URL, if any. */
-function purgeVolume(url: string) {
-  const volumeId = `${VOLUME_SCHEME}:${url}`
-  if (cache.getVolumeLoadObject(volumeId)) {
-    try {
-      cache.removeVolumeLoadObject(volumeId)
-    } catch {
-      /* already gone */
-    }
+export async function addNiftiFile(file: File): Promise<{ imageIds: string[]; tags: DicomTags }> {
+  const header = await readNiftiHeader(file).catch(() => null)
+  if (!header) throw new SkipError('notDicom')
+  const layout = niftiLayout(header)
+  const id = nextId++
+  volumes.set(id, { file, header, layout })
+  return {
+    imageIds: Array.from({ length: layout.slices }, (_, k) => `nifti:${id}/${k}`),
+    tags: fileTags(id, file.name, layout),
   }
 }
 
-/** Release a NIfTI volume's object URL and cached volume; slices are dropped by the caller. */
-export function releaseNiftiVolume(volumeId: string) {
-  if (objectUrls.delete(volumeId)) {
-    purgeVolume(volumeId)
-    URL.revokeObjectURL(volumeId)
+/** Drop the volumes behind these images, with their voxels. */
+export function releaseNiftiImages(imageIds: string[]) {
+  for (const imageId of imageIds) {
+    const parsed = parseImageId(imageId)
+    if (parsed) volumes.delete(parsed.id)
   }
 }
 
-/** Release every parsed NIfTI volume. */
 export function clearNiftiVolumes() {
-  for (const url of objectUrls) {
-    purgeVolume(url)
-    URL.revokeObjectURL(url)
-  }
-  objectUrls.clear()
+  volumes.clear()
 }
