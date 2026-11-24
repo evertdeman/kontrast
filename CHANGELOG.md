@@ -1,3 +1,9 @@
+# [1.7.0](https://github.com/evertdeman/kontrast/compare/v1.6.0...v1.7.0) (2026-11-24)
+
+### Features
+
+* Add nifti support ([#16](https://github.com/evertdeman/kontrast/issues/16)) ([bdc21b2](https://github.com/evertdeman/kontrast/commit/bdc21b293c5cb0a7045e03c82f8e5894c57e2a3a))
+
 # [1.6.0](https://github.com/evertdeman/kontrast/compare/v1.5.0...v1.6.0) (2026-11-18)
 
 ### Features
