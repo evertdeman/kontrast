@@ -1,12 +1,11 @@
-import type { Types } from '@cornerstonejs/core'
 import { Play, Pause, TriangleAlert } from 'lucide-react'
-import { Viewport } from '@/components/Viewport'
+import { Viewport, type ViewerViewport } from '@/components/Viewport'
 import type { StudyHeader } from '@/lib/cornerstone/metadata'
 import { useOrientationLabels } from '@/components/viewer/useOrientationLabels'
 
 interface ViewportStageProps {
   imageIds: string[]
-  viewport: Types.IStackViewport | null
+  viewport: ViewerViewport | null
   /** Number of images in this series that failed to decode. */
   failedCount: number
   header: StudyHeader
@@ -16,7 +15,7 @@ interface ViewportStageProps {
   playing: boolean
   onTogglePlay: () => void
   onScrub: (index: number) => void
-  onViewportReady: (vp: Types.IStackViewport) => void
+  onViewportReady: (vp: ViewerViewport) => void
   onIndexChange: (index: number) => void
   onLoadError: (imageId: string) => void
 }
@@ -71,11 +70,20 @@ export function ViewportStage({
 
         {/* Corner overlays */}
         <Corner className="left-3.5 top-3 text-[#d4d4d8]">
-          <div>{header.patient.toUpperCase()}</div>
-          <div className="text-muted-foreground">
-            {header.modality} · {header.description}
-          </div>
-          <div className="text-muted-foreground">{header.date}</div>
+          {header.format === 'nifti' ? (
+            <>
+              <div>{header.description}</div>
+              <div className="text-muted-foreground">NIfTI</div>
+            </>
+          ) : (
+            <>
+              <div>{header.patient.toUpperCase()}</div>
+              <div className="text-muted-foreground">
+                {header.modality} · {header.description}
+              </div>
+              <div className="text-muted-foreground">{header.date}</div>
+            </>
+          )}
         </Corner>
 
         <Corner className="right-3.5 top-3 text-right text-[#d4d4d8]">
@@ -90,9 +98,16 @@ export function ViewportStage({
 
         <Corner className="bottom-3 left-3.5 text-[#d4d4d8]">
           {window && (
-            <div>
-              W {window.ww}&nbsp;&nbsp;L {window.wl}
-            </div>
+            <>
+              <div>
+                W {window.ww}&nbsp;&nbsp;L {window.wl}
+              </div>
+              {/* NIfTI voxels are normalised for display, so these numbers are
+                  relative contrast, not calibrated intensities (never HU). */}
+              {header.format === 'nifti' && (
+                <div className="text-muted-foreground">uncalibrated</div>
+              )}
+            </>
           )}
         </Corner>
 

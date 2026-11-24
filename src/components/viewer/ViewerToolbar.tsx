@@ -42,6 +42,12 @@ interface ViewerToolbarProps {
   /** Window presets for the current series; the menu is hidden when empty. */
   presets: WindowPreset[]
   onPreset: (preset: WindowPreset) => void
+  /**
+   * Whether the pixel values are calibrated. NIfTI voxels are normalised for
+   * display, so intensity readouts (the elliptical ROI's mean/SD) would be
+   * meaningless; the ROI tool is hidden when this is false.
+   */
+  intensityCalibrated: boolean
   inspectorCollapsed: boolean
   onToggleInspector: () => void
 }
@@ -128,16 +134,22 @@ export function ViewerToolbar({
   onScreenshot,
   presets,
   onPreset,
+  intensityCalibrated,
   inspectorCollapsed,
   onToggleInspector,
 }: ViewerToolbarProps) {
+  // Drop the intensity ROI when voxel values are uncalibrated (e.g. NIfTI);
+  // length and angle stay, as those are spatial, not value-based.
+  const measureTools = intensityCalibrated
+    ? MEASURE_TOOLS
+    : MEASURE_TOOLS.filter((t) => t.id !== 'EllipticalROI')
   return (
     <div
       role="toolbar"
       aria-label="Tools"
       className="flex h-12 flex-none flex-wrap items-center gap-1 border-b border-line px-2"
     >
-      {[VIEW_TOOLS, MEASURE_TOOLS].map((group, i) => (
+      {[VIEW_TOOLS, measureTools].map((group, i) => (
         <div key={i} className="contents">
           {group.map(({ id, label, Icon }) => (
             <IconButton

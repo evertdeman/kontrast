@@ -17,14 +17,26 @@ test('opens a .nii volume, renders it and scrolls its slices', async ({ page }) 
   await expect(row).toHaveCount(1)
 
   await openViewer(page, row)
+  await expect(viewport(page).locator('canvas').first()).toBeVisible()
   await expect.poll(() => canvasHasContent(viewport(page).locator('canvas').first())).toBe(true)
-  await expect(sliceCounter(page)).toHaveText('1 / 8')
-  // Windowed to the header's display range (cal_min 0, cal_max 1000); DICOM's
-  // linear window function reads that back as a width of 999.
-  await expect.poll(() => windowLevel(page)).toBe('W 999 L 500')
+  // A volume opens on its middle slice, not the near-empty first one.
+  await expect(sliceCounter(page)).toHaveText(/^[2-7] \/ 8$/)
+  // The overlay shows the volume name and format, not empty DICOM placeholders.
+  await expect(viewport(page).getByText('NIfTI')).toBeVisible()
+  await expect(viewport(page).getByText('brain', { exact: true })).toBeVisible()
+  await expect(viewport(page).getByText('ANONYMOUS')).toHaveCount(0)
+  // The volume carries its own window/level; we only assert a readout is shown.
+  await expect.poll(() => windowLevel(page)).toMatch(/^W \d+ L -?\d+$/)
+  // NIfTI voxels are normalised for display, so the readout is flagged as
+  // uncalibrated and the intensity ROI tool is not offered (its mean/SD would
+  // be meaningless). Spatial measurements (length, angle) stay available.
+  await expect(viewport(page).getByText('uncalibrated')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Elliptical region' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Length measurement' })).toBeVisible()
 
+  const startSlice = Number((await sliceCounter(page).textContent())!.split('/')[0])
   await page.keyboard.press('ArrowDown')
-  await expect(sliceCounter(page)).toHaveText('2 / 8')
+  await expect(sliceCounter(page)).toHaveText(`${startSlice + 1} / 8`)
 
   // NIfTI has no DICOM header, so the full-header view is hidden.
   await expect(page.getByRole('button', { name: /View full header/ })).toHaveCount(0)
