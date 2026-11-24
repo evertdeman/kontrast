@@ -32,6 +32,7 @@ function tags(overrides: Partial<DicomTags> = {}, summary: Record<string, string
     patientOrientation: null,
     accession: 'ACC1',
     burnedInAnnotation: '',
+    format: 'dicom',
     summary: {
       PatientName: 'Doe^Jane',
       PatientID: 'PID-1',
@@ -69,6 +70,7 @@ function study(list: SeriesInfo[]): StudyInfo {
     series: list,
     imageCount: 0,
     bytes: 0,
+    format: 'dicom',
   }
 }
 

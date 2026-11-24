@@ -15,6 +15,8 @@ interface InspectorProps {
   seriesDescription: string
   headerOpen: boolean
   onHeaderOpenChange: (open: boolean) => void
+  /** Whether a full DICOM header is available (false for NIfTI). */
+  showHeader: boolean
   width: number
   collapsed: boolean
   onWidthChange: (width: number) => void
@@ -27,6 +29,7 @@ export function Inspector({
   seriesDescription,
   headerOpen,
   onHeaderOpenChange,
+  showHeader,
   width,
   collapsed,
   onWidthChange,
@@ -73,24 +76,29 @@ export function Inspector({
         ))}
       </ScrollArea>
 
-      <div className="border-t border-line p-3">
-        <button
-          type="button"
-          onClick={() => onHeaderOpenChange(true)}
-          className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-line-strong bg-elevated text-[13px] font-medium transition-colors hover:brightness-110"
-        >
-          <FileText className="size-3.5" />
-          View full header
-          <Kbd className="ml-1">H</Kbd>
-        </button>
-      </div>
+      {/* NIfTI carries no DICOM header, so the full-header view is hidden for it. */}
+      {showHeader && (
+        <>
+          <div className="border-t border-line p-3">
+            <button
+              type="button"
+              onClick={() => onHeaderOpenChange(true)}
+              className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-line-strong bg-elevated text-[13px] font-medium transition-colors hover:brightness-110"
+            >
+              <FileText className="size-3.5" />
+              View full header
+              <Kbd className="ml-1">H</Kbd>
+            </button>
+          </div>
 
-      <HeaderDialog
-        open={headerOpen}
-        onOpenChange={onHeaderOpenChange}
-        imageId={imageId}
-        description={`${seriesDescription} · image ${index + 1} of ${total}`}
-      />
+          <HeaderDialog
+            open={headerOpen}
+            onOpenChange={onHeaderOpenChange}
+            imageId={imageId}
+            description={`${seriesDescription} · image ${index + 1} of ${total}`}
+          />
+        </>
+      )}
     </aside>
   )
 }

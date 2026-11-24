@@ -22,7 +22,7 @@ function sameLabels(a: ScreenLabels | null, b: ScreenLabels | null): boolean {
  * camera changes, so flips and rotations are reflected.
  */
 export function useOrientationLabels(
-  viewport: Types.IStackViewport | null,
+  viewport: Types.IStackViewport | Types.IVolumeViewport | null,
   imageId: string | undefined,
 ): ScreenLabels | null {
   const [labels, setLabels] = useState<ScreenLabels | null>(null)

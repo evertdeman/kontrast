@@ -65,7 +65,7 @@ export default function Workspace({ entry, onExit }: WorkspaceProps) {
           return
         }
         if (instances.length === 0) {
-          toast.error('No DICOM images found in that selection.', {
+          toast.error('No DICOM or NIfTI images found in that selection.', {
             description: skippedNote,
           })
           // Nothing landed and nothing was open: fall back to the landing screen.

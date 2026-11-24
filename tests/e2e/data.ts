@@ -2,8 +2,9 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { zipSync } from 'fflate'
+import { gzipSync, zipSync } from 'fflate'
 import { buildDicom, type DicomDataset } from '../../src/test/buildDicom'
+import { buildNifti } from '../../src/test/buildNifti'
 
 const CT_IMAGE_STORAGE = '1.2.840.10008.5.1.4.1.1.2'
 
@@ -104,6 +105,29 @@ export function ctHeadZip(dir: string, count = 6): string {
   }
   const file = path.join(dir, 'ct-head.zip')
   writeFileSync(file, zipSync(entries, { level: 6 }))
+  return file
+}
+
+/** An axial NIfTI volume (identity sform) with a bright disk on every slice. */
+const brainNifti = () =>
+  buildNifti({
+    dims: [16, 16, 8],
+    affine: [[1, 0, 0, -8], [0, 1, 0, -8], [0, 0, 1, 0]],
+    value: (i, j) => (Math.hypot(i - 8, j - 8) < 16 / 3 ? 1000 : 0),
+    calMax: 1000,
+  })
+
+/** A plain `.nii` volume on disk. */
+export function niftiFile(dir: string): string {
+  const file = path.join(dir, 'brain.nii')
+  writeFileSync(file, brainNifti())
+  return file
+}
+
+/** A gzip-compressed `.nii.gz` volume on disk, to exercise decompression. */
+export function niftiGzFile(dir: string): string {
+  const file = path.join(dir, 'brain.nii.gz')
+  writeFileSync(file, gzipSync(brainNifti()))
   return file
 }
 

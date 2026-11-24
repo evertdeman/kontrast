@@ -132,24 +132,19 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
     >
       <SiteHeader />
 
-      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center gap-16 px-4 pb-16 pt-12 sm:px-6 lg:px-10">
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center gap-10 px-4 pb-12 pt-8 sm:px-6 lg:px-10">
         {/* Hero */}
-        <div className="flex max-w-[880px] flex-col items-center gap-4 text-center">
+        <div className="flex max-w-[880px] flex-col items-center text-center">
           <h1 className="text-[clamp(2.5rem,6vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-balance">
             Open any scan.
             <br />
             <span className="text-faint">Nothing leaves your device.</span>
           </h1>
-          <p className="max-w-[600px] text-[17px] leading-[1.55] text-muted-foreground text-pretty">
-            Open DICOM files to scroll through CT, MR and X-ray series, search
-            every header tag, and anonymise a study before you share it.
-            Everything runs on your own machine.
-          </p>
         </div>
 
         {/* Dropzone, styled as an empty viewer */}
         <section
-          aria-label="Open DICOM data"
+          aria-label="Open DICOM or NIfTI data"
           className={cn(
             "w-full overflow-hidden rounded-2xl border bg-card shadow-[0_24px_64px_-24px_rgba(0,0,0,0.35)] transition-colors",
             dragging ? "border-primary" : "border-line-strong",
@@ -170,7 +165,7 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
             ))}
           </div>
 
-          <div className="flex min-h-[340px] lg:min-h-[480px]">
+          <div className="flex min-h-[300px] lg:min-h-[420px]">
             {/* Empty series rail */}
             <div
               aria-hidden="true"
@@ -218,11 +213,11 @@ export function Landing({ onFiles, onSample, loading }: LandingProps) {
                   <>
                     <div className="flex flex-col gap-1.5">
                       <div className="text-[17px] font-medium">
-                        Drop a DICOM folder anywhere on this page
+                        Drop a scan anywhere on this page
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        CD and PACS exports, .zip archives, .dcm and
-                        extension-less files
+                        DICOM and NIfTI: CD and PACS exports, .zip archives,
+                        .dcm, .nii, .nii.gz and extension-less files
                       </div>
                     </div>
                     <div className="flex flex-wrap justify-center gap-2">

@@ -26,6 +26,7 @@ function tags(overrides: Partial<DicomTags> = {}): DicomTags {
     patientOrientation: null,
     accession: 'ACC1',
     burnedInAnnotation: '',
+    format: 'dicom',
     summary: {},
     ...overrides,
   }

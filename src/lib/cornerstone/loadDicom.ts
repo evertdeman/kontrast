@@ -17,10 +17,19 @@ import {
   type DicomTags,
   type SkipReason,
 } from '@/lib/dicom/parse'
+import {
+  NIFTI_FILE,
+  addNiftiFile,
+  clearNiftiVolumes,
+  releaseNiftiImages,
+} from '@/lib/cornerstone/loadNifti'
 
 export { describeSkipped, type DicomTags, type SkipReason } from '@/lib/dicom/parse'
 
-/** One DICOM file (SOP instance); multi-frame files have one imageId per frame. */
+/**
+ * One DICOM file (SOP instance); multi-frame files have one imageId per frame.
+ * A NIfTI file is one instance with an imageId per slice.
+ */
 export interface RegisteredInstance {
   imageIds: string[]
   bytes: number
@@ -74,6 +83,7 @@ export function clearRegisteredFiles() {
   sopInstanceUids.clear()
   tagRegistry.clear()
   fileRegistry.clear()
+  clearNiftiVolumes()
   wadouri.dataSetCacheManager.purge()
   cache.purgeCache()
 }
@@ -99,6 +109,7 @@ export function releaseImages(imageIds: string[]) {
       wadouri.dataSetCacheManager.unload(index)
     }
   }
+  releaseNiftiImages(imageIds)
 }
 
 /**
@@ -125,6 +136,16 @@ export async function registerFiles(
     while (cursor < candidates.length && !signal?.aborted) {
       const file = candidates[cursor++]
       try {
+        if (NIFTI_FILE.test(file.name)) {
+          const { imageIds, tags } = await addNiftiFile(file)
+          if (signal?.aborted) return
+          for (const imageId of imageIds) {
+            tagRegistry.set(imageId, tags)
+            fileRegistry.set(imageId, file)
+          }
+          instances.push({ imageIds, bytes: file.size, tags })
+          continue
+        }
         if (!(await looksLikeDicom(file))) throw new SkipError('notDicom')
         const bytes = new Uint8Array(await file.arrayBuffer())
         const tags = parseTags(bytes)

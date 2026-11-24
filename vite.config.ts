@@ -38,7 +38,10 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  // 'self' plus blob: — the NIfTI loader reads its volume from an in-memory
+  // blob URL. blob: is local data, never a network origin, so this still
+  // forbids sending anything off-device.
+  "connect-src 'self' blob:",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

@@ -23,6 +23,8 @@ export interface StudyHeader {
   rows?: number
   columns?: number
   seriesDescription: string
+  /** Source format, so the viewer can hide DICOM-only fields for NIfTI. */
+  format: 'dicom' | 'nifti'
 }
 
 function formatDate(raw?: string): string | undefined {
@@ -40,6 +42,7 @@ export function getStudyHeader(imageId: string): StudyHeader {
     seriesDescription: t?.seriesDescription || 'Series',
     rows: t?.rows ?? undefined,
     columns: t?.columns ?? undefined,
+    format: t?.format ?? 'dicom',
   }
 }
 

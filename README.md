@@ -18,6 +18,7 @@ Kontrast is a DICOM viewer that runs entirely in your browser. Drop in a folder,
 - Folders, individual files and `.zip` archives (including zips inside zips and large ZIP64 archives), by drag and drop or file picker
 - CD and PACS exports: files with no extension, files named by UID, `DICOMDIR` folders
 - Multi-frame files such as ultrasound clips and enhanced CT/MR, one image per frame
+- NIfTI volumes (`.nii` and `.nii.gz`), slice by slice in the standard radiological view; view-only, as NIfTI has no DICOM header to search, anonymise or edit (4D files show their first volume)
 - Common compressions: JPEG baseline and lossless, JPEG-LS, JPEG 2000, HTJ2K, JPEG XL and RLE
 - Names and text in the file's own character set, including UTF-8, Cyrillic, Japanese, Korean and Chinese
 - A clear summary of anything skipped and why (not DICOM, no image, unsupported compression such as video, damaged zip, already open)
@@ -133,6 +134,7 @@ git clone --depth 1 https://github.com/pydicom/pydicom-data.git test-data/pydico
 
 - [Cornerstone3D](https://www.cornerstonejs.org/) for rendering and image decoding
 - [dicom-parser](https://github.com/cornerstonejs/dicomParser) and [dcmjs](https://github.com/dcmjs-org/dcmjs) for reading headers
+- [NIFTI-Reader-JS](https://github.com/rii-mango/NIFTI-Reader-JS) for reading NIfTI headers
 - [fflate](https://github.com/101arrowz/fflate) for writing zips
 - React, TypeScript and Vite
 - Tailwind CSS, [shadcn/ui](https://ui.shadcn.com/) and [Radix](https://www.radix-ui.com/)

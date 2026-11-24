@@ -34,6 +34,8 @@ export interface DicomTags {
   accession: string
   /** BurnedInAnnotation: "YES", "NO" or empty when absent. */
   burnedInAnnotation: string
+  /** Source format: 'dicom', or 'nifti' for viewing-only NIfTI volumes. */
+  format: 'dicom' | 'nifti'
   /** Curated header values keyed by DICOM keyword, for the inspector. */
   summary: Record<string, string>
 }
@@ -162,6 +164,7 @@ export function parseTags(bytes: Uint8Array): DicomTags {
     patientOrientation: patientOrientation(ds),
     accession: text('x00080050'),
     burnedInAnnotation: ds.string('x00280301') ?? '',
+    format: 'dicom',
     summary: extractSummary(ds),
   }
 }
