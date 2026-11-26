@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/evertdeman/kontrast/compare/v1.7.0...v1.8.0) (2026-11-26)
+
+### Features
+
+* add imprint page (§ 5 DDG) ([1a42ef6](https://github.com/evertdeman/kontrast/commit/1a42ef63b977bdbd2e8a0e619cbd6c36d0ddce89))
+* add PWA manifest, social meta tags and icons ([48b2c27](https://github.com/evertdeman/kontrast/commit/48b2c27b8b0873f6bb26f7a6281e2cee853b2350))
+
 # [1.7.0](https://github.com/evertdeman/kontrast/compare/v1.6.0...v1.7.0) (2026-11-24)
 
 ### Features
